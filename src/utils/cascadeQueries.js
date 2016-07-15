@@ -293,17 +293,123 @@ export const postRecordMany = (table, tableId, field, fieldId) => (
  * }
  * ```
  *
- * @param  {String} table - Name of the table to update
+ * @param  {String} table - Name of the table to update.
  * @param  {String} tableId - ID of the table to update.
  * @param  {String} field - Name of the field to update.
- * @param  {String} fieldId - ID to append to the field.
+ * @param  {String} fieldId - ID to relace the field.
  * @return {Object} - RethinkDB query.
  */
-export const postRecordOne = (table, tableId, field, fieldId) => {
+export const postRecordOne = (table, tableId, field, fieldId) => (
   r.table(table).get(tableId).update({
     [field]: {
       id: fieldId,
       archived: false,
     },
-  });
-};
+  })
+);
+
+/**
+ * Append the ID of the relationships that are returned from `setUnion` and `difference`.
+ * If the relationships have changed:
+ * Then we use basic set theory to determine what relationships to append to.
+ * {@link https://github.com/endfire/redink/wiki}
+ *
+ * ```
+ * // example RethinkDB query
+ * r.do(r(['1', '2', '3']).setUnion(['1', '4']).difference(r(['1', '2', '3'])), ids => (
+ *   ids.forEach(id => (
+ *     r.table('enterprises').get(id).update(row => ({
+ *       'listings': row('listings').append({ id: '100', archived: false }),
+ *     }))
+ *   ))
+ * ))
+ *
+ * // example update call: listing
+ * {
+ *   id: '100',
+ *   name: 'Listing 1',
+ *   enterprises: {
+ *     old: ['1', '2', '3'],
+ *     new: ['1', 4'],
+ *   },
+ * }
+ * ```
+ *
+ * @param  {String} table - Name of the table to update.
+ * @param  {String} inverseField - Name of the field to update.
+ * @param  {Object} data - Object containing old and new data.
+ * @param  {String} appendId - ID to append to the field.
+ * @return {Object} - RethinkDB query.
+ */
+export const updateAppendRecord = (table, inverseField, data, appendId) => (
+  r.do(r(data.old).setUnion(data.new).difference(r(data.old)), ids => (
+    ids.forEach(id => (
+      r.table(table).get(id).update(row => ({
+        [inverseField]: row(inverseField).append({ id: appendId, archived: false }),
+      }))
+    ))
+  ))
+);
+
+/**
+ * Archive the ID of the relationships that are returned from `setUnion` and `difference`.
+ * If the relationships have changed:
+ * Then we use basic set theory to determine what relationship to archive.
+ * {@link https://github.com/endfire/redink/wiki}
+ *
+ * ```
+ * // example RethinkDB query
+ * r.do(r(['1', '2', '3']).setUnion(['1', '4']).difference(r(['1', '4'])), ids => (
+ *   ids.forEach(id => (
+ *     r.table('enterprise').get(id).update(row => ({
+ *       'listings': row('listings').map(data => (
+ *         r.branch(data('id').eq('100'),
+ *           {
+ *             id: data('id'),
+ *             archived: true,
+ *           }, {
+ *             id: data('id'),
+ *             archived: data('archived'),
+ *           }
+ *         )
+ *       )),
+ *     }))
+ *   ))
+ * ))
+ *
+ * // example update call: listing
+ * {
+ *   id: '100',
+ *   name: 'Listing 1',
+ *   enterprises: {
+ *     old: ['1', '2', '3'],
+ *     new: ['1', 4'],
+ *   },
+ * }
+ * ```
+ *
+ * @param  {String} table - Name of the table to update.
+ * @param  {String} inverseField - Name of the field to update.
+ * @param  {Object} data - Object containing old and new data.
+ * @param  {String} archiveId - ID to archive in the fields array.
+ * @return {Object} - RethinkDB query.
+ */
+export const updateArchiveRecord = (table, inverseField, record, archiveId) => (
+  r.do(r(record.old).setUnion(record.new).difference(r(record.new)), ids => (
+    ids.forEach(id => (
+      r.table(table).get(id).update(row => ({
+        [inverseField]: row(inverseField).map(data => (
+          r.branch(data('id').eq(archiveId),
+            {
+              id: data('id'),
+              archived: true,
+            }, {
+              id: data('id'),
+              archived: data('archived'),
+            }
+          )
+        )),
+      }))
+    ))
+  ))
+);

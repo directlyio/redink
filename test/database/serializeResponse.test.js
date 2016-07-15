@@ -1,8 +1,8 @@
 import test from 'ava';
-import serializeResponse from '../../../src/services/database/serializeResponse';
-import { schemas } from '../../fixtures';
+import serializeResponse from '../../src/database/serializeResponse';
+import { schemas } from '../fixtures';
 
-test.only('Serialize: Serialize body', t => {
+test('Serialize: Serialize body', t => {
   const schema = schemas.individual;
 
   const expected = {

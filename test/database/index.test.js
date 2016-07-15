@@ -1,8 +1,8 @@
 import test from 'ava';
 import r from 'rethinkdb';
-import { db } from '../../../src/services';
-import { schemas } from '../../fixtures';
-import getFieldsToMerge from '../../../src/services/database/getFieldsToMerge';
+import { db } from '../../src/db';
+import { schemas } from '../fixtures';
+import getFieldsToMerge from '../../src/database/getFieldsToMerge';
 
 const userTable = 'individual';
 const animalTable = 'animal';
@@ -21,7 +21,7 @@ test.before('Database: Connect to database', async t => {
   t.is(table, true, 'Cleared the tables');
 });
 
-test('Database: Create, read, update, delete with no relationships', async t => {
+test.skip('Database: Create, read, update, delete with no relationships', async t => {
   let user;
 
   user = await db().instance().create('individual', {
@@ -71,7 +71,7 @@ test('Database: Create, read, update, delete with no relationships', async t => 
   t.is(user.deleted, true, 'user was successfully deleted');
 });
 
-test('Database: Fetch related', async t => {
+test.skip('Database: Fetch related', async t => {
   let expected;
 
   await db().instance().create('company', {
@@ -215,7 +215,7 @@ test('Database: Fetch related', async t => {
   t.deepEqual(company, expected, 'fetched company has correct json');
 });
 
-test('Merge: Merge relationships with complete relationships', async t => {
+test.skip('Merge: Merge relationships with complete relationships', async t => {
   await r.table(companyTable).insert({
     id: '1000',
     name: 'Apple',
@@ -338,7 +338,7 @@ test('Merge: Merge relationships with complete relationships', async t => {
   t.deepEqual(merged, expected, 'merged object has correct json');
 });
 
-test('Merge: Merge relationships with incomplete relationships', async t => {
+test.skip('Merge: Merge relationships with incomplete relationships', async t => {
   await r.table(companyTable).insert({
     id: '2000',
     name: 'IBM',

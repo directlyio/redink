@@ -1,6 +1,6 @@
 import test from 'ava';
-import getRelationships from '../../../src/services/utils/getRelationships';
-import { schemas } from '../../fixtures';
+import getRelationships from '../../src/utils/getRelationships';
+import { schemas } from '../fixtures';
 
 test('Table with no relationships.', t => {
   const noRelationships = getRelationships('user', schemas);

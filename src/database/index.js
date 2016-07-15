@@ -1,8 +1,10 @@
 import r from 'rethinkdb';
 import sanitizeRequest from './sanitizeRequest';
+import serializeResponse from './serializeResponse';
 import getFieldsToMerge from './getFieldsToMerge';
 import { UnprocessableEntity } from 'http-errors';
 import cascadeArchive from './cascadeArchive';
+import cascadeUpdate from './cascadeUpdate';
 import cascadePost from './cascadePost';
 
 export default class Database {
@@ -73,7 +75,7 @@ export default class Database {
         .then(fetch)
         .then(cascade)
         .then(result => resolve({
-          ...returnObject,
+          ...serializeResponse(returnObject),
           cascade: result,
         }))
         .catch(err => reject(new UnprocessableEntity(err)));
@@ -103,17 +105,23 @@ export default class Database {
     const { conn, schemas } = this;
     const table = r.table(type);
 
-    const sanitizedData = sanitizeRequest(schemas[type], data);
+    const sanitizedData = sanitizeRequest(schemas[type], data, 'update');
     const fieldsToMerge = getFieldsToMerge(schemas, type);
+    const updateArray = cascadeUpdate(type, id, data, schemas);
     const fetch = () => table.get(id).merge(fieldsToMerge).run(conn);
+    const cascade = () => r.do(updateArray).run(conn);
 
     return new Promise((resolve, reject) => {
       table
         .get(id)
         .update(sanitizedData)
         .run(conn)
+        .then(cascade)
         .then(fetch)
-        .then(resolve)
+        .then(record => resolve({
+          ...serializeResponse(schemas[type], record),
+          cascade: true,
+        }))
         .catch(err => reject(new UnprocessableEntity(err)));
     });
   }

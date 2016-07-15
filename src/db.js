@@ -1,6 +1,6 @@
 import Database from './database';
 
-function db(schemas, host, name) {
+function db(schemas = {}, host = '', name = '') {
   if (db.instance) {
     return {
       instance() {

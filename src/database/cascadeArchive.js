@@ -42,7 +42,7 @@ import { archiveRecord,
  */
 const traversePatchObject = (patch, schemas) => {
   const { keys } = Object;
-  let archiveArray = [];
+  const archiveArray = [];
 
   keys(patch).forEach(table => {
     const relationships = getRelationships(table, schemas);
@@ -51,11 +51,11 @@ const traversePatchObject = (patch, schemas) => {
     keys(lookup).forEach(id =>
       keys(lookup[id]).forEach(field =>
         keys(lookup[id][field]).forEach(fieldId => (
-          archiveArray = [...archiveArray, (
+          archiveArray.push((
             relationships[field].original === 'hasMany' ?
             archiveManyRelationship(table, field, id, fieldId) :
             archiveSingleRelationship(table, field, id, fieldId)
-          )]
+          ))
         ))
       )
     );
@@ -84,7 +84,7 @@ const traversePatchObject = (patch, schemas) => {
  * @return {Array} - Array of RethinkDB queries.
  */
 export const createArchiveArray = (archiveObject, schemas) => {
-  let archiveArray = [];
+  const archiveArray = [];
   const { archive, patch } = archiveObject;
   const { keys } = Object;
 
@@ -92,7 +92,7 @@ export const createArchiveArray = (archiveObject, schemas) => {
     keys(archive[table]).forEach(id =>
       archiveArray.push(archiveRecord(table, id))));
 
-  archiveArray = [...archiveArray, traversePatchObject(patch, schemas)];
+  archiveArray.push(...traversePatchObject(patch, schemas));
 
   return archiveArray;
 };

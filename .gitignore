@@ -1,2 +1,7 @@
 node_modules
 .DS_Store
+dist
+.env
+coverage
+coverage.lcov
+.nyc_output

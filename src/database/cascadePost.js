@@ -13,18 +13,17 @@ import _ from 'lodash';
  * @return {Array} Array of RethinkDB queries
  */
 const createPostArray = (entity, field, id) => {
-  const { forEach } = _;
   const { table, inverseField, original, inverse } = entity;
-  let postArray = [];
+  const postArray = [];
 
   if (original === 'belongsTo' && inverse === 'hasMany') {
-    postArray = [...postArray, postRecordMany(table, field.id, inverseField, id)];
+    postArray.push(postRecordMany(table, field.id, inverseField, id));
   } else if (original === 'hasMany' && inverse === 'hasMany') {
-    forEach(field, obj => {
-      postArray = [...postArray, postRecordMany(table, obj.id, inverseField, id)];
+    _.forEach(field, obj => {
+      postArray.push(postRecordMany(table, obj.id, inverseField, id));
     });
   } else if (original === 'belongsTo' && inverse === 'hasOne') {
-    postArray = [...postArray, postRecordOne(table, field.id, inverseField, id)];
+    postArray.push(postRecordOne(table, field.id, inverseField, id));
   }
 
   return postArray;
@@ -46,12 +45,11 @@ const createPostArray = (entity, field, id) => {
  * @return {Array} Array of RethinkDB queries.
  */
 export default (record, table, connection, schemas) => {
-  const { keys } = Object;
   const postArray = [];
 
   const relationships = getRelationships(table, schemas);
 
-  keys(relationships).forEach(relationship => {
+  Object.keys(relationships).forEach(relationship => {
     if (record.hasOwnProperty(relationship)) {
       const entity = relationships[relationship];
 

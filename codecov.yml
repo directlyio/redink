@@ -1,0 +1,40 @@
+codecov:
+  token: dcac94a2-3635-4afc-aa87-fe3a4b041fe9
+  branch: master
+  bot: null
+
+coverage:
+  precision: 2
+  round: down
+  range: "85...100"
+
+  notify:
+    slack:
+      default:
+        url: null
+        threshold: null
+        branches: null
+        attachments: "sunburst, diff"
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: null
+        branches: null
+
+    patch:
+      default:
+        target: auto
+        branches: null
+
+    changes:
+      default:
+        branches: null
+
+  ignore: null
+
+comment:
+  layout: "header, diff, changes, sunburst, uncovered"
+  branches: null
+  behavior: default
