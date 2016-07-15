@@ -1,2 +1,2 @@
-# redink
+# Redink
 RethinkDB ORM

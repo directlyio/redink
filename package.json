@@ -1,0 +1,29 @@
+{
+  "name": "redink",
+  "version": "0.0.1",
+  "description": "RethinkDB ORM",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endfire/redink.git"
+  },
+  "keywords": [
+    "RethinkDB",
+    "ORM"
+  ],
+  "author": "CJ Brewer",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/endfire/redink/issues"
+  },
+  "homepage": "https://github.com/endfire/redink#readme",
+  "dependencies": {
+    "ava": "^0.15.2",
+    "http-errors": "^1.5.0",
+    "lodash": "^4.13.1",
+    "r": "0.0.5"
+  }
+}
