@@ -177,8 +177,6 @@ test('Integration tests', async t => {
 
   const findAllUsers = await find('user');
 
-  console.log(findAllUsers);
-
   const stopDB = await db.stop();
 
   t.truthy((findAllUsers.length > 0), 'message');

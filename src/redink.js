@@ -8,7 +8,7 @@ import cascadeUpdate from './utils/cascadeUpdate';
 import cascadePost from './utils/cascadePost';
 
 export default class Redink {
-  constructor(schemas, name, host) {
+  constructor(schemas = {}, { name = '', host = '' }) {
     this.schemas = schemas;
     this.name = name;
     this.host = host;
