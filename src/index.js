@@ -1,12 +1,11 @@
 /* eslint-disable no-unused-vars */
 import { db } from './dbSingleton';
 
-export const create = (type, data) => db().instance().create;
-export const update = (type, id, data) => db().instance().update;
-export const archive = (type, id) => db().instance().delete;
-export const find = (type, filter = {}) => db().instance().find;
-export const fetch = (type, id) => db().instance().fetch;
-export const fetchRelated = (type, id) => db().instance().fetchRelated;
+export const create = (type, data) => db().instance().create(type, data);
+export const update = (type, id, data) => db().instance().update(type, id, data);
+export const archive = (type, id) => db().instance().delete(type, id);
+export const find = (type, filter = {}) => db().instance().find(type, filter);
+export const fetch = (type, id) => db().instance().fetch(type, id);
 
 export default () => ({
   start(options) {

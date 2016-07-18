@@ -53,7 +53,10 @@ export default (record, table, connection, schemas) => {
     if (record.hasOwnProperty(relationship)) {
       const entity = relationships[relationship];
 
-      if (record[relationship] === null) throw new Conflict('Cannot post, entity does not exist');
+      if (record[relationship] === null) {
+        throw new Conflict('Cannot cascade post, entity does not exist but record was created.');
+      }
+
       postArray.push(...createPostArray(entity, record[relationship], record.id));
     }
   });

@@ -224,4 +224,27 @@ export default {
       },
     },
   },
+  body: {
+    attributes: {
+      person: true,
+      meta: true,
+    },
+    relationships: {
+      head: {
+        hasOne: 'head',
+        inverse: 'body',
+      },
+    },
+  },
+  head: {
+    attributes: {
+      meta: true,
+    },
+    relationships: {
+      body: {
+        belongsTo: 'body',
+        inverse: 'head',
+      },
+    },
+  },
 };

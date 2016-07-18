@@ -1,4 +1,4 @@
-import Database from './database';
+import Redink from './redink';
 
 function db(schemas = {}, host = '', name = '') {
   if (db.instance) {
@@ -15,7 +15,7 @@ function db(schemas = {}, host = '', name = '') {
 
   return {
     start() {
-      db.instance = new Database(schemas, { host, name });
+      db.instance = new Redink(schemas, { host, name });
       return db.instance.connect();
     },
   };

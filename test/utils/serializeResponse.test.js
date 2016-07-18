@@ -9,8 +9,19 @@ test('Serialize: Serialize body', t => {
     id: '6',
     name: 'CJ',
     email: 'brewercalvinj@gmail.com',
-    pets: ['1', '2'],
-    company: '1',
+    pets: [{
+      id: '1',
+      archived: false,
+    }, {
+      id: '2',
+      archived: false,
+    }],
+    company: {
+      id: '1',
+    },
+    meta: {
+      archived: false,
+    },
   };
 
   const serialized = serializeResponse(schema, {

@@ -7,8 +7,8 @@ import cascadeArchive from './utils/cascadeArchive';
 import cascadeUpdate from './utils/cascadeUpdate';
 import cascadePost from './utils/cascadePost';
 
-export default class Database {
-  constructor(schemas = {}, { name = '', host = '' }) {
+export default class Redink {
+  constructor(schemas, name, host) {
     this.schemas = schemas;
     this.name = name;
     this.host = host;
@@ -73,10 +73,7 @@ export default class Database {
         .run(conn)
         .then(fetch)
         .then(cascade)
-        .then(result => resolve({
-          ...serializeResponse(schemas[type], returnObject),
-          cascade: result,
-        }))
+        .then(() => resolve(serializeResponse(schemas[type], returnObject)))
         .catch(err => reject(new UnprocessableEntity(err)));
     });
   }
@@ -117,10 +114,7 @@ export default class Database {
         .run(conn)
         .then(cascade)
         .then(fetch)
-        .then(record => resolve({
-          ...serializeResponse(schemas[type], record),
-          cascade: true,
-        }))
+        .then(record => resolve(serializeResponse(schemas[type], record)))
         .catch(err => reject(new UnprocessableEntity(err)));
     });
   }
@@ -219,7 +213,7 @@ export default class Database {
         .coerceTo('array')
         .orderBy('id')
         .run(conn)
-        .then(resolve)
+        .then(records => resolve(records.map(record => serializeResponse(schemas[type], record))))
         .catch(err => reject(new UnprocessableEntity(err)));
     });
   }
@@ -249,58 +243,7 @@ export default class Database {
         .get(id)
         .merge(fieldsToMerge)
         .run(conn)
-        .then(resolve)
-        .catch(err => reject(new UnprocessableEntity(err)));
-    });
-  }
-
-  /**
-   * Fetches the `field` relationship from the record with id `id` from the table `type`;
-   *
-   * ```js
-   * db.fetchRelated('user', 10, 'pets').then(pets => {
-   *   // all the pets
-   * });
-   *
-   * db.fetchRelated('user', 10, 'company').then(company => {
-   *   // company
-   * });
-   * ```
-   *
-   * @param {String} type - The table name.
-   * @param {String} id - The ID of the record that is going to be fetched.
-   * @return {(Object|Object[])}
-   */
-  fetchRelated(type, id, field) {
-    /* eslint-disable no-param-reassign */
-    id = `${id}`;
-    const { conn, schemas } = this;
-
-    const parentTable = r.table(type);
-    const relationship = schemas[type].relationships[field];
-    const { hasMany, belongsTo, embedded } = relationship;
-
-    const relatedTable = hasMany
-      ? r.table(hasMany)
-      : r.table(belongsTo);
-
-    let fetch;
-
-    if (embedded) {
-      fetch = parentTable.get(id)(field);
-    } else {
-      fetch = hasMany
-        ? relatedTable.getAll(r.args(parentTable.get(id)(field)('id'))).coerceTo('array')
-        : relatedTable.get(parentTable.get(id)(field)('id'));
-    }
-
-    const fieldsToMerge = getFieldsToMerge(schemas, hasMany || belongsTo);
-
-    return new Promise((resolve, reject) => {
-      fetch
-        .merge(fieldsToMerge)
-        .run(conn)
-        .then(resolve)
+        .then(record => resolve(serializeResponse(schemas[type], record)))
         .catch(err => reject(new UnprocessableEntity(err)));
     });
   }

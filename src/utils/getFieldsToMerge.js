@@ -64,15 +64,15 @@ export default (schemas, type) => record => {
   const keys = Object.keys(relationships);
 
   return r({}).merge(r.args(keys.map(key => {
-    const { hasMany, belongsTo, embedded } = relationships[key];
+    const { hasMany, belongsTo, hasOne, embedded } = relationships[key];
 
     // don't merge embedded objects
     if (embedded) return {};
 
-    const table = r.table(hasMany || belongsTo);
+    const table = r.table(hasMany || belongsTo || hasOne);
     const hasFields = record.hasFields(key);
 
-    // merge `hasMany` and `belongsTo` relationships
+    // merge `hasMany`, `belongsTo`, and `hasOne` relationships
     return hasMany
       ? (
           r.branch(hasFields, {

@@ -7,21 +7,21 @@ test.before('Database: Connect to database', async t => {
   t.truthy(db().instance().conn, 'connection is present');
 });
 
-test('Database: Cascade post', async t => {
-  const post = await db().instance().create('listing', {
-    company: '100',
-    categories: ['112', '113'],
-  });
-
-  t.truthy(post.id, 'Cascade post was a success');
-});
-
-test('Database: Cascade post hasOne', async t => {
+test('Database: Cascade update hasOne', async t => {
   const post = await db().instance().create('head', {
     body: '1',
   });
 
-  t.truthy(post.id, 'Cascade post was a success');
+  const head = post.id;
+
+  const update = await db().instance().update('head', head, {
+    body: {
+      old: '1',
+      new: '2',
+    },
+  });
+
+  t.truthy(update.id, 'Cascade update was a success');
 });
 
 test.after.always('Database: Teardown database', async () => {

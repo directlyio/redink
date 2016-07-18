@@ -15,7 +15,9 @@ r.connect({
       r.table('enterprise').delete(),
       r.table('listing').delete(),
       r.table('ad').delete(),
-      r.table('employee').delete()
+      r.table('employee').delete(),
+      r.table('body').delete(),
+      r.table('head').delete()
     ).run(connection);
   })
   .then(() => (
@@ -509,6 +511,20 @@ r.connect({
             archived: false,
           },
         ],
+      }),
+      r.table('body').insert({
+        id: '1',
+        meta: {
+          archived: false,
+        },
+        person: 'CJ Brewer',
+      }),
+      r.table('body').insert({
+        id: '2',
+        meta: {
+          archived: false,
+        },
+        person: 'Dylan Slack',
       })
     ).run(connection)
   ))

@@ -64,14 +64,10 @@ export default (schema, data) => {
   for (const relationship of relationships) {
     if (serialized.hasOwnProperty(relationship)) {
       const redinkObject = serialized[relationship];
-
-      serialized[relationship] = Array.isArray(redinkObject)
-        ? redinkObject.map(obj => (obj.id))
-        : redinkObject.id;
+      if (redinkObject.hasOwnProperty('archived')) delete redinkObject.archived;
+      serialized[relationship] = redinkObject;
     }
   }
-
-  if (serialized.hasOwnProperty('meta')) delete serialized.meta;
 
   return serialized;
 };

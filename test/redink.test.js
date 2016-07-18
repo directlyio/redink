@@ -21,15 +21,12 @@ test.before('Database: Connect to database', async t => {
   t.is(table, true, 'Cleared the tables');
 });
 
-test.skip('Database: Create, read, update, delete with no relationships', async t => {
+test('Database: Create, read, update, delete with no relationships', async t => {
   let user;
 
   user = await db().instance().create('individual', {
     name: 'Dylan',
     email: 'dylanslack@gmail.com',
-    meta: {
-      archived: false,
-    },
   });
 
   t.deepEqual(user, {
@@ -39,7 +36,6 @@ test.skip('Database: Create, read, update, delete with no relationships', async 
     meta: {
       archived: false,
     },
-    cascade: [],
   }, 'created user has correct json');
 
   user = await db().instance().fetch('individual', user.id);
@@ -71,161 +67,17 @@ test.skip('Database: Create, read, update, delete with no relationships', async 
   t.is(user.deleted, true, 'user was successfully deleted');
 });
 
-test.skip('Database: Fetch related', async t => {
-  let expected;
-
-  await db().instance().create('company', {
-    id: '13',
-    name: 'Apple',
-    employees: [],
-    meta: {
-      archived: false,
-    },
-  });
-
-  await db().instance().create('individual', {
-    id: '10',
-    name: 'Dylan',
-    email: 'dylanslack@gmail.com',
-    pets: [],
-    company: {
-      id: '13',
-      archived: false,
-    },
-    meta: {
-      archived: false,
-    },
-  });
-
-  await db().instance().create('animal', {
-    id: '11',
-    species: 'dog',
-    color: 'brown',
-    owner: {
-      id: '10',
-      archived: false,
-    },
-    meta: {
-      archived: false,
-    },
-  });
-
-  await db().instance().create('animal', {
-    id: '12',
-    species: 'cat',
-    color: 'black',
-    owner: {
-      id: '10',
-      archived: false,
-    },
-    meta: {
-      archived: false,
-    },
-  });
-
-  const pets = await db().instance().fetchRelated('individual', '10', 'pets');
-
-  expected = [{
-    id: '11',
-    species: 'dog',
-    color: 'brown',
-    owner: {
-      archived: false,
-      id: '10',
-      name: 'Dylan',
-      email: 'dylanslack@gmail.com',
-      pets: [{
-        id: '11',
-        archived: false,
-      }, {
-        id: '12',
-        archived: false,
-      }],
-      company: {
-        id: '13',
-        archived: false,
-      },
-      meta: {
-        archived: false,
-      },
-    },
-    meta: {
-      archived: false,
-    },
-  }, {
-    id: '12',
-    species: 'cat',
-    color: 'black',
-    owner: {
-      archived: false,
-      id: '10',
-      name: 'Dylan',
-      email: 'dylanslack@gmail.com',
-      pets: [{
-        id: '11',
-        archived: false,
-      }, {
-        id: '12',
-        archived: false,
-      }],
-      company: {
-        id: '13',
-        archived: false,
-      },
-      meta: {
-        archived: false,
-      },
-    },
-    meta: {
-      archived: false,
-    },
-  }];
-
-  t.deepEqual(pets, expected, 'fetched pets has correct json');
-
-  const company = await db().instance().fetchRelated('individual', '10', 'company');
-
-  expected = {
-    id: '13',
-    name: 'Apple',
-    employees: [{
-      id: '10',
-      name: 'Dylan',
-      email: 'dylanslack@gmail.com',
-      pets: [{
-        id: '11',
-        archived: false,
-      }, {
-        id: '12',
-        archived: false,
-      }],
-      company: {
-        id: '13',
-        archived: false,
-      },
-      meta: {
-        archived: false,
-      },
-    }],
-    meta: {
-      archived: false,
-    },
-  };
-
-  t.deepEqual(company, expected, 'fetched company has correct json');
-});
-
-test.skip('Merge: Merge relationships with complete relationships', async t => {
+test('Merge: Merge relationships with complete relationships', async t => {
   await r.table(companyTable).insert({
     id: '1000',
     name: 'Apple',
+    meta: {
+      archived: false,
+    },
     employees: [{
       id: '1100',
       archived: false,
     }],
-    meta: {
-      archived: false,
-    },
   }).run(db().instance().conn);
 
   await r.table(userTable).insert({
@@ -288,17 +140,20 @@ test.skip('Merge: Merge relationships with complete relationships', async t => {
     id: '1100',
     name: 'Dylan',
     email: 'dylanslack@gmail.com',
+    meta: {
+      archived: false,
+    },
     company: {
       archived: false,
       id: '1000',
       name: 'Apple',
+      meta: {
+        archived: false,
+      },
       employees: [{
         id: '1100',
         archived: false,
       }],
-      meta: {
-        archived: false,
-      },
     },
     pets: [{
       id: '1110',
@@ -307,10 +162,10 @@ test.skip('Merge: Merge relationships with complete relationships', async t => {
         id: '1100',
         archived: false,
       },
-      color: 'brown',
       meta: {
         archived: false,
       },
+      color: 'brown',
     }, {
       id: '2200',
       species: 'cat',
@@ -318,10 +173,10 @@ test.skip('Merge: Merge relationships with complete relationships', async t => {
         id: '1100',
         archived: false,
       },
-      color: 'black',
       meta: {
         archived: false,
       },
+      color: 'black',
     }],
     cars: [
       {
@@ -330,15 +185,12 @@ test.skip('Merge: Merge relationships with complete relationships', async t => {
         color: 'red',
       },
     ],
-    meta: {
-      archived: false,
-    },
   };
 
   t.deepEqual(merged, expected, 'merged object has correct json');
 });
 
-test.skip('Merge: Merge relationships with incomplete relationships', async t => {
+test('Merge: Merge relationships with incomplete relationships', async t => {
   await r.table(companyTable).insert({
     id: '2000',
     name: 'IBM',
@@ -379,6 +231,38 @@ test.skip('Merge: Merge relationships with incomplete relationships', async t =>
         archived: false,
       },
     },
+    meta: {
+      archived: false,
+    },
+  };
+
+  t.deepEqual(merged, expected, 'merged object has correct json');
+});
+
+test('Merge: Merge relationships with no relationships', async t => {
+  await r.table('user').insert({
+    id: '12',
+    name: 'CJ',
+    email: 'brewercalvinj@gmail.com',
+    password: 'password',
+    role: '1',
+    meta: {
+      archived: false,
+    },
+  }).run(db().instance().conn);
+
+
+  const merged = await r.table('user')
+    .get('12')
+    .merge(getFieldsToMerge(schemas, 'user'))
+    .run(db().instance().conn);
+
+  const expected = {
+    id: '12',
+    name: 'CJ',
+    email: 'brewercalvinj@gmail.com',
+    password: 'password',
+    role: '1',
     meta: {
       archived: false,
     },
