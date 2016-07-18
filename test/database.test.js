@@ -1,8 +1,8 @@
 import test from 'ava';
 import r from 'rethinkdb';
-import { db } from '../../src/db';
-import { schemas } from '../fixtures';
-import getFieldsToMerge from '../../src/database/getFieldsToMerge';
+import { db } from '../src/dbSingleton';
+import { schemas } from './fixtures';
+import getFieldsToMerge from '../src/utils/getFieldsToMerge';
 
 const userTable = 'individual';
 const animalTable = 'animal';

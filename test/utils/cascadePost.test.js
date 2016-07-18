@@ -1,5 +1,5 @@
 import test from 'ava';
-import { db } from '../../src/db';
+import { db } from '../../src/dbSingleton';
 import { schemas } from '../fixtures';
 
 test.before('Database: Connect to database', async t => {
@@ -7,25 +7,10 @@ test.before('Database: Connect to database', async t => {
   t.truthy(db().instance().conn, 'connection is present');
 });
 
-test.skip('Database: Cascade post', async t => {
+test('Database: Cascade post', async t => {
   const post = await db().instance().create('listing', {
-    meta: {
-      archived: false,
-    },
-    company: {
-      id: '100',
-      archived: false,
-    },
-    categories: [
-      {
-        id: '112',
-        archived: false,
-      },
-      {
-        id: '113',
-        archived: false,
-      },
-    ],
+    company: '100',
+    categories: ['112', '113'],
   });
 
   t.truthy(post.cascade, 'Cascade post was a success');

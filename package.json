@@ -1,6 +1,6 @@
 {
   "name": "redink",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "description": "RethinkDB ORM",
   "main": "dist/index.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "test": "better-npm-run test",
     "test:lint": "better-npm-run test:lint",
     "test:src": "better-npm-run test:src",
-    "pre:publish": "better-npm-run pre:publish"
+    "prepublish": "better-npm-run prepublish"
   },
   "betterScripts": {
     "build": {
@@ -35,8 +35,8 @@
     "test:src": {
       "command": "nyc ava && nyc report --reporter=lcov"
     },
-    "pre:publish": {
-      "command": "npm run build:prod && npm publish"
+    "prepublish": {
+      "command": "npm run build:prod"
     }
   },
   "repository": {

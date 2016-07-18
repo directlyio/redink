@@ -13,7 +13,7 @@ const options = {
   schemas,
 };
 
-test.skip('Start redink', async t => {
+test('Start redink', async t => {
   t.truthy(await redink().start(options), 'Redink started');
 
   t.truthy(await redink().stop(), 'Redink stopped');

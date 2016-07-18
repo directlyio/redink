@@ -1,5 +1,5 @@
 import test from 'ava';
-import { db } from '../../src/db';
+import { db } from '../../src/dbSingleton';
 import { schemas } from '../fixtures';
 
 test.before('Database: Connect to database', async t => {
@@ -7,7 +7,7 @@ test.before('Database: Connect to database', async t => {
   t.truthy(db().instance().conn, 'connection is present');
 });
 
-test.skip('Database: Archive', async t => {
+test('Database: Archive', async t => {
   const archive = await db().instance().delete('enterprise', '100');
 
   t.is(archive.deleted, true, 'Archived relationships');

@@ -1,11 +1,11 @@
 import r from 'rethinkdb';
-import sanitizeRequest from './sanitizeRequest';
-import serializeResponse from './serializeResponse';
-import getFieldsToMerge from './getFieldsToMerge';
 import { UnprocessableEntity } from 'http-errors';
-import cascadeArchive from './cascadeArchive';
-import cascadeUpdate from './cascadeUpdate';
-import cascadePost from './cascadePost';
+import sanitizeRequest from './utils/sanitizeRequest';
+import serializeResponse from './utils/serializeResponse';
+import getFieldsToMerge from './utils/getFieldsToMerge';
+import cascadeArchive from './utils/cascadeArchive';
+import cascadeUpdate from './utils/cascadeUpdate';
+import cascadePost from './utils/cascadePost';
 
 export default class Database {
   constructor(schemas = {}, { name = '', host = '' }) {
@@ -67,7 +67,6 @@ export default class Database {
         .run(conn);
     };
 
-
     return new Promise((resolve, reject) => {
       table
         .insert(sanitizedData)
@@ -75,7 +74,7 @@ export default class Database {
         .then(fetch)
         .then(cascade)
         .then(result => resolve({
-          ...serializeResponse(returnObject),
+          ...serializeResponse(schemas[type], returnObject),
           cascade: result,
         }))
         .catch(err => reject(new UnprocessableEntity(err)));

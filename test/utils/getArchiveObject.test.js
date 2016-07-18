@@ -1,5 +1,5 @@
 import test from 'ava';
-import { db } from '../../src/db';
+import { db } from '../../src/dbSingleton';
 import { schemas } from '../fixtures';
 import getArchiveObject from '../../src/utils/getArchiveObject';
 
@@ -8,96 +8,96 @@ test.before('Database: Connect to database', async t => {
   t.truthy(db().instance().conn, 'connection is present');
 });
 
-test.skip('Test for `archiveObject`', async t => {
+test('Test for `archiveObject`', async t => {
   const properArchiveObject = {
     archive: {
       enterprise: {
-        100: true,
+        1009: true,
       },
       listing: {
-        1111: true,
-        2222: true,
+        11119: true,
+        22229: true,
       },
       ad: {
-        11110: true,
-        22220: true,
+        111109: true,
+        222209: true,
       },
     },
     patch: {
       enterprise: {
-        100: {
+        1009: {
           listings: {
-            1111: true,
-            2222: true,
+            11119: true,
+            22229: true,
           },
           ads: {
-            11110: true,
-            22220: true,
+            111109: true,
+            222209: true,
           },
         },
       },
       listing: {
-        1111: {
+        11119: {
           company: {
-            100: true,
+            1009: true,
           },
           categories: {
-            112: true,
-            113: true,
+            1129: true,
+            1139: true,
           },
         },
-        2222: {
+        22229: {
           company: {
-            100: true,
+            1009: true,
           },
           categories: {
-            112: true,
+            1129: true,
           },
         },
       },
       ad: {
-        11110: {
+        111109: {
           company: {
-            100: true,
+            1009: true,
           },
           categories: {
-            112: true,
-            113: true,
+            1129: true,
+            1139: true,
           },
         },
-        22220: {
+        222209: {
           company: {
-            100: true,
+            1009: true,
           },
           categories: {
-            112: true,
+            1129: true,
           },
         },
       },
       category: {
-        112: {
+        1129: {
           listings: {
-            1111: true,
-            2222: true,
+            11119: true,
+            22229: true,
           },
           ads: {
-            11110: true,
-            22220: true,
+            111109: true,
+            222209: true,
           },
         },
-        113: {
+        1139: {
           listings: {
-            1111: true,
+            11119: true,
           },
           ads: {
-            11110: true,
+            111109: true,
           },
         },
       },
     },
   };
 
-  const archiveObject = await getArchiveObject('100', 'enterprise', schemas, db().instance().conn);
+  const archiveObject = await getArchiveObject('1009', 'enterprise', schemas, db().instance().conn);
 
   t.deepEqual(archiveObject, properArchiveObject);
 });

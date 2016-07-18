@@ -1,5 +1,5 @@
 import test from 'ava';
-import sanitizeRequest from '../../src/database/sanitizeRequest';
+import sanitizeRequest from '../../src/utils/sanitizeRequest';
 import { schemas } from '../fixtures';
 
 test('Sanitize: Sanitize request', t => {

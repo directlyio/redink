@@ -1,8 +1,8 @@
 import test from 'ava';
-import { db } from '../src/db';
+import { db } from '../src/dbSingleton';
 import { schemas } from './fixtures';
 
-test.skip('Singleton: Database singleton', t => {
+test('Singleton: Database singleton', t => {
   db(schemas, process.env.RETHINKDB_URL, process.env.RETHINKDB_NAME).start();
 
   const first = db().instance();

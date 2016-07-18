@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { db } from './db';
+import { db } from './dbSingleton';
 
 export const create = (type, data) => db().instance().create;
 export const update = (type, id, data) => db().instance().update;
@@ -22,7 +22,6 @@ export default () => ({
 
   stop() {
     return new Promise((resolve, reject) => {
-      console.log('got to start');
       db().stop()
         .then(resolve(true))
         .catch(reject);

@@ -1,5 +1,5 @@
 import test from 'ava';
-import serializeResponse from '../../src/database/serializeResponse';
+import serializeResponse from '../../src/utils/serializeResponse';
 import { schemas } from '../fixtures';
 
 test('Serialize: Serialize body', t => {
