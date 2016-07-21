@@ -55,18 +55,12 @@ test('Relationship field has too many (non-embedded) properties.', t => {
     },
   };
 
-  try {
+  t.throws(() => {
     getRelationships('funky', schemaOne);
-  } catch (e) {
-    if (e instanceof Error && e.message === 'Incorrect number of properties.') {
-      t.pass('Proper error was thrown.');
-    } else {
-      t.fail('Not the expected error.');
-    }
-  }
+  }, 'Incorrect number of properties, expecting 2.', 'Incorrect number of properties');
 });
 
-test('Relationship field has an invalid (relationship type) key.', t => {
+test('Relationship field has an invalid (relationship type) key', t => {
   const schemaTwo = {
     funky: {
       relationships: {
@@ -78,13 +72,8 @@ test('Relationship field has an invalid (relationship type) key.', t => {
     },
   };
 
-  try {
+  t.throws(() => {
     getRelationships('funky', schemaTwo);
-  } catch (e) {
-    if (e instanceof Error && e.message === 'Invalid relationship type.') {
-      t.pass('Proper error was thrown.');
-    } else {
-      t.fail('Not the expected error.');
-    }
-  }
+  }, 'Invalid relationship type, expecting `hasMany`, `belongsTo`, or `hasOne`.',
+     'Invalid relationship key');
 });

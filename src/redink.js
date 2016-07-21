@@ -1,5 +1,5 @@
 import r from 'rethinkdb';
-import { UnprocessableEntity } from 'http-errors';
+import { RedinkDatabaseError } from 'redink-errors';
 import sanitizeRequest from './utils/sanitizeRequest';
 import serializeResponse from './utils/serializeResponse';
 import getFieldsToMerge from './utils/getFieldsToMerge';
@@ -14,6 +14,14 @@ export default class Redink {
     this.host = host;
   }
 
+  /**
+   * Connect to a RethinkDB database.
+   * Requires host and name to be defined or will reject the promise.
+   *
+   * @throws {RedinkDatabaseError} - Error describing why the connection could not be made.
+   *
+   * @return {Object} - RethinkDB connection.
+   */
   connect() {
     const { host, name } = this;
 
@@ -21,7 +29,11 @@ export default class Redink {
       r.connect({ host, db: name }).then(conn => {
         this.conn = conn;
         return resolve(conn);
-      }).catch(err => reject(new UnprocessableEntity(err)));
+      }).catch(/* istanbul ignore next */ err => (
+        reject(
+          new RedinkDatabaseError(`Could not connect to the database: ${err.message}`)
+        )
+      ));
     });
   }
 
@@ -44,6 +56,8 @@ export default class Redink {
    * });
    * ```
    *
+   * @throws {RedinkDatabaseError} - Chained error message passed to @see reject().
+   *
    * @param {String} type - The table name.
    * @param {Object} data - Flattened JSON representing attributes and relationships.
    * @return {Object}
@@ -55,26 +69,29 @@ export default class Redink {
 
     const sanitizedData = sanitizeRequest(schemas[type], data);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
+    const cascade = postArray => r.do(postArray).run(conn);
     const fetch = ({ generated_keys: keys }) =>
       table
         .get((keys && keys[0]) || data.id)
         .merge(fieldsToMerge)
         .run(conn);
 
-    const cascade = record => {
-      returnObject = record;
-      return r.do(cascadePost(record, type, conn, schemas))
-        .run(conn);
-    };
-
     return new Promise((resolve, reject) => {
       table
         .insert(sanitizedData)
         .run(conn)
         .then(fetch)
+        .then(record => {
+          returnObject = record;
+          return cascadePost(record, type, conn, schemas);
+        })
         .then(cascade)
         .then(() => resolve(serializeResponse(schemas[type], returnObject)))
-        .catch(err => reject(new UnprocessableEntity(err)));
+        .catch(err => (
+          reject(
+            new RedinkDatabaseError(`Error creating record of type '${type}': ${err.message}`)
+          )
+        ));
     });
   }
 
@@ -90,6 +107,8 @@ export default class Redink {
    * });
    * ```
    *
+   * @throws {RedinkDatabaseError} - Chained error message passed to @see reject().
+   *
    * @param {String} type - The table name.
    * @param {String)} id - The ID of the record that is going to be updated.
    * @param {Object} data - Flattened JSON representing attributes and relationships.
@@ -101,26 +120,30 @@ export default class Redink {
     const { conn, schemas } = this;
     const table = r.table(type);
 
-    const sanitizedData = sanitizeRequest(schemas[type], data, 'update');
-    const fieldsToMerge = getFieldsToMerge(schemas, type);
+    const sanitized = sanitizeRequest(schemas[type], data, 'update');
     const updateArray = cascadeUpdate(type, id, data, schemas);
+    const fieldsToMerge = getFieldsToMerge(schemas, type);
     const fetch = () => table.get(id).merge(fieldsToMerge).run(conn);
     const cascade = () => r.do(updateArray).run(conn);
 
     return new Promise((resolve, reject) => {
       table
         .get(id)
-        .update(sanitizedData)
+        .update(sanitized)
         .run(conn)
         .then(cascade)
         .then(fetch)
         .then(record => resolve(serializeResponse(schemas[type], record)))
-        .catch(err => reject(new UnprocessableEntity(err)));
+        .catch(/* istanbul ignore next */ err => (
+          reject(
+            new RedinkDatabaseError(`Error updating record of type '${type}': ${err.message}`)
+          )
+        ));
     });
   }
 
   /**
-   * Deletes the record with id `id` from the table `type`.
+   * Archives the record with id `id` from the table `type`.
    *
    * ```js
    * db.delete('user', 10).then(success => {
@@ -128,13 +151,13 @@ export default class Redink {
    * });
    * ```
    *
-   * TODO: Change name of method to `archive`.
+   * @throws {RedinkDatabaseError} - Chained error message passed to @see reject().
    *
    * @param {String} type - The table name.
    * @param {String} id - The ID of the record that is going to be deleted.
    * @return {Boolean}
    */
-  delete(type, id) {
+  archive(type, id) {
     /* eslint-disable no-param-reassign */
     id = `${id}`;
     const { conn, schemas } = this;
@@ -154,7 +177,11 @@ export default class Redink {
           .run(conn)
           .then(didSucceed)
           .then(resolve)
-          .catch(err => reject(new UnprocessableEntity(err)));
+          .catch(/* istanbul ignore next */ err => (
+            reject(
+              new RedinkDatabaseError(`Error archiving record of type '${type}': ${err.message}`)
+            )
+          ));
       })
     ));
   }
@@ -167,6 +194,8 @@ export default class Redink {
    *   // true or false
    * });
    * ```
+   *
+   * @throws {RedinkDatabaseError} - Chained error message passed to @see reject().
    *
    * @param {String} type - The table name.
    * @return {Boolean}
@@ -182,7 +211,11 @@ export default class Redink {
         .run(conn)
         .then(didSucceed)
         .then(resolve)
-        .catch(err => reject(new UnprocessableEntity(err)));
+        .catch(/* istanbul ignore next */ err => (
+          reject(
+            new RedinkDatabaseError(`Error clearing table of type '${type}': ${err.message}`)
+          )
+        ));
     });
   }
 
@@ -196,6 +229,8 @@ export default class Redink {
    *   // found object
    * });
    * ```
+   *
+   * @throws {RedinkDatabaseError} - Chained error message passed to @see reject().
    *
    * @param {String} type - The table name.
    * @param {(Object|Function)} [fiter={}] - The RethinkDB filter object or function.
@@ -213,8 +248,14 @@ export default class Redink {
         .coerceTo('array')
         .orderBy('id')
         .run(conn)
-        .then(records => resolve(records.map(record => serializeResponse(schemas[type], record))))
-        .catch(err => reject(new UnprocessableEntity(err)));
+        .then(records => (
+          resolve(records.map(record => serializeResponse(schemas[type], record)))
+        ))
+        .catch(/* istanbul ignore next */ err => (
+          reject(
+            new RedinkDatabaseError(`Error finding record of type '${type}': ${err.message}`)
+          )
+        ));
     });
   }
 
@@ -226,6 +267,8 @@ export default class Redink {
    *   // fetched object
    * });
    * ```
+   *
+   * @throws {RedinkDatabaseError} - Chained error message passed to @see reject().
    *
    * @param {String} type - The table name.
    * @param {String} id - The ID of the record that is going to be fetched.
@@ -244,7 +287,11 @@ export default class Redink {
         .merge(fieldsToMerge)
         .run(conn)
         .then(record => resolve(serializeResponse(schemas[type], record)))
-        .catch(err => reject(new UnprocessableEntity(err)));
+        .catch(/* istanbul ignore next */ err => (
+          reject(
+            new RedinkDatabaseError(`Error fetching record of type '${type}': ${err.message}`)
+          )
+        ));
     });
   }
 }

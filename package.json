@@ -1,6 +1,6 @@
 {
   "name": "redink",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "description": "RethinkDB ORM",
   "main": "dist/index.js",
   "scripts": {
@@ -54,8 +54,8 @@
   },
   "homepage": "https://github.com/endfire/redink#readme",
   "dependencies": {
-    "http-errors": "^1.5.0",
     "lodash": "^4.13.1",
+    "redink-errors": "0.1.0",
     "rethinkdb": "^2.3.2"
   },
   "devDependencies": {
@@ -80,7 +80,7 @@
     ],
     "source": [
       "src/**/*.{js}",
-      "!build/**/*"
+      "!dist/**/*"
     ],
     "require": [
       "babel-register"

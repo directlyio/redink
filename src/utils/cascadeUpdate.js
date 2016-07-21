@@ -1,4 +1,3 @@
-import { Conflict } from 'http-errors';
 import getRelationships from '../utils/getRelationships';
 import { archiveManyRelationship,
          postRecordMany,
@@ -55,9 +54,6 @@ export default (table, id, data, schemas) => {
     if (data.hasOwnProperty(relationship)) {
       const entity = relationships[relationship];
 
-      if (!data[relationship].old && !data[relationship].new) {
-        throw new Conflict('Missing old and/or new fields.');
-      }
       updateArray.push(...createPostArray(entity, data[relationship], id));
     }
   });

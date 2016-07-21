@@ -1,3 +1,5 @@
+import { RedinkUtilError } from 'redink-errors';
+
 /**
  * Parses `data` and purges data fields that are not present in `schema`.
  * Replace relationships with format `{ id, archived: false }`.
@@ -103,7 +105,19 @@ export default (schema, data, isUpdate = false) => {
 
   for (const relationship of relationships) {
     if (sanitized.hasOwnProperty(relationship)) {
-      const ids = isUpdate ? sanitized[relationship].new : sanitized[relationship];
+      let ids;
+
+      if (isUpdate) {
+        if (!data[relationship].old || !data[relationship].new) {
+          throw new RedinkUtilError(
+            `Missing old and/or new fields for '${relationship}'.`
+          );
+        }
+
+        ids = sanitized[relationship].new;
+      } else {
+        ids = sanitized[relationship];
+      }
 
       if (
         keys(schema.relationships[relationship]).includes('hasMany') &&
@@ -119,6 +133,5 @@ export default (schema, data, isUpdate = false) => {
   }
 
   if (data.hasOwnProperty('id')) sanitized.id = data.id;
-
   return sanitized;
 };

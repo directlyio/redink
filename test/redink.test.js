@@ -62,7 +62,7 @@ test('Database: Create, read, update, delete with no relationships', async t => 
     },
   }, 'updated user has correct json');
 
-  user = await db().instance().delete('individual', user.id);
+  user = await db().instance().archive('individual', user.id);
 
   t.is(user.deleted, true, 'user was successfully deleted');
 });

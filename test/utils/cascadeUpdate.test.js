@@ -24,6 +24,40 @@ test('Database: Cascade update hasOne', async t => {
   t.truthy(update.id, 'Cascade update was a success');
 });
 
+test('Database: missing new field', async t => {
+  const expected = "Missing old and/or new fields for 'body'.";
+
+  const post = await db().instance().create('head', {
+    body: '1',
+  });
+
+  try {
+    await db().instance().update('head', post.id, {
+      body: '2',
+    });
+  } catch (e) {
+    t.is(e.message, expected, 'Missing new field');
+  }
+});
+
+test('Database: missing old field', async t => {
+  const expected = "Missing old and/or new fields for 'body'.";
+
+  const post = await db().instance().create('head', {
+    body: '1',
+  });
+
+  try {
+    await db().instance().update('head', post.id, {
+      body: {
+        new: '2',
+      },
+    });
+  } catch (e) {
+    t.is(e.message, expected, 'Missing old field');
+  }
+});
+
 test.after.always('Database: Teardown database', async () => {
   await db().stop();
 });

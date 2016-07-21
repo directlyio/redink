@@ -1,4 +1,4 @@
-import { Conflict } from 'http-errors';
+import { RedinkUtilError } from 'redink-errors';
 import getRelationships from '../utils/getRelationships';
 import { postRecordMany, postRecordOne } from '../utils/cascadeQueries';
 import _ from 'lodash';
@@ -54,7 +54,9 @@ export default (record, table, connection, schemas) => {
       const entity = relationships[relationship];
 
       if (record[relationship] === null) {
-        throw new Conflict('Cannot cascade post, entity does not exist but record was created.');
+        throw new RedinkUtilError(
+          `Cascade post failed: '${relationship}' does not exist but '${table}' was created.`
+        );
       }
 
       postArray.push(...createPostArray(entity, record[relationship], record.id));

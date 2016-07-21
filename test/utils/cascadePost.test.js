@@ -24,6 +24,19 @@ test('Database: Cascade post hasOne', async t => {
   t.truthy(post.id, 'Cascade post was a success');
 });
 
-test.after.always('Database: Teardown database', async () => {
+test('Database: Cascade post to non exist record', async t => {
+  const expected = "Error creating record of type 'head': " +
+                   "Cascade post failed: 'body' does not exist but 'head' was created.";
+
+  try {
+    await db().instance().create('head', {
+      body: '10122',
+    });
+  } catch (e) {
+    t.is(e.message, expected, 'Body record is null');
+  }
+});
+
+test.after('Database: Teardown database', async () => {
   await db().stop();
 });

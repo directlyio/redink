@@ -19,6 +19,10 @@ test('Test for `addToQueue`', t => {
       table: 'listing',
       id: '2222',
     },
+    {
+      table: 'company',
+      id: '1000',
+    },
   ];
 
   const actionObject = {
@@ -33,6 +37,12 @@ test('Test for `addToQueue`', t => {
       table: 'listing',
       inverseField: 'company',
       ids: ['1111', '2222'],
+    },
+    company: {
+      action: 'archive',
+      table: 'company',
+      inverseField: 'company',
+      ids: '1000',
     },
   };
 

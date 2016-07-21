@@ -101,7 +101,7 @@ test('Database: Archive', async t => {
 
   t.deepEqual(archiveObject, properArchiveObject);
 
-  const archive = await db().instance().delete('enterprise', '100');
+  const archive = await db().instance().archive('enterprise', '100');
 
   t.is(archive.deleted, true, 'Archived relationships');
 

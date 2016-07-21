@@ -1,4 +1,5 @@
 import { forEach } from 'lodash';
+import { RedinkUtilError } from 'redink-errors';
 
 /**
  * Return all original and inverse relationships of a given table.
@@ -21,8 +22,14 @@ import { forEach } from 'lodash';
  */
 const types = ['hasMany', 'belongsTo', 'hasOne'];
 const objectVerify = object => {
-  if (Object.keys(object).length !== 2) throw new Error('Incorrect number of properties.');
-  if (!types.includes(Object.keys(object)[0])) throw new Error('Invalid relationship type.');
+  if (Object.keys(object).length !== 2) {
+    throw new RedinkUtilError('Incorrect number of properties, expecting 2.');
+  }
+  if (!types.includes(Object.keys(object)[0])) {
+    throw new RedinkUtilError(
+      'Invalid relationship type, expecting `hasMany`, `belongsTo`, or `hasOne`.'
+    );
+  }
 };
 
 export default (originalTable, schemas) => {
