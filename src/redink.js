@@ -161,21 +161,18 @@ export default class Redink {
     /* eslint-disable no-param-reassign */
     id = `${id}`;
     const { conn, schemas } = this;
-    const didSucceed = archived => {
-      const result = archived
-        ? { deleted: true, id }
-        : { deleted: false };
-
-      return result;
-    };
+    const table = r.table(type);
     const query = new Promise((resolve) =>
       resolve(cascadeArchive(id, type, conn, schemas)));
+
+    const fieldsToMerge = getFieldsToMerge(schemas, type);
+    const fetch = () => table.get(id).merge(fieldsToMerge).run(conn);
 
     return query.then(reql => (
       new Promise((resolve, reject) => {
         r.do(reql)
           .run(conn)
-          .then(didSucceed)
+          .then(fetch)
           .then(resolve)
           .catch(/* istanbul ignore next */ err => (
             reject(

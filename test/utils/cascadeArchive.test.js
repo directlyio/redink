@@ -103,7 +103,7 @@ test('Database: Archive', async t => {
 
   const archive = await db().instance().archive('enterprise', '100');
 
-  t.is(archive.deleted, true, 'Archived relationships');
+  t.truthy(archive.id, 'Archived relationships');
 
   const post = await db().instance().update('listing', '11119', {
     company: {

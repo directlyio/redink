@@ -173,7 +173,7 @@ test('Integration tests', async t => {
 
   const archiveUser = await archive('user', user1.id);
 
-  t.truthy(archiveUser.deleted, 'Archived the user and relationships');
+  t.truthy(archiveUser.id, 'Archived the user and relationships');
 
   const findAllUsers = await find('user');
 
