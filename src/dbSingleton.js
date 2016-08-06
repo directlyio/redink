@@ -1,7 +1,7 @@
 import Redink from './redink';
 import { RedinkError } from 'redink-errors';
 
-function db(schemas = {}, host = '', name = '') {
+function db(schemas = {}, name = '', host = '') {
   if (db.instance) {
     return {
       instance() {
@@ -16,7 +16,7 @@ function db(schemas = {}, host = '', name = '') {
 
   return {
     start() {
-      db.instance = new Redink(schemas, host, name);
+      db.instance = new Redink(schemas, name, host);
       return db.instance.connect();
     },
 

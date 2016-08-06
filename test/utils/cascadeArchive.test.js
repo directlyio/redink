@@ -4,7 +4,7 @@ import { schemas } from '../fixtures';
 import getArchiveObject from '../../src/utils/getArchiveObject';
 
 test.before('Database: Connect to database', async t => {
-  await db(schemas, process.env.RETHINKDB_URL, process.env.RETHINKDB_NAME).start();
+  await db(schemas, process.env.RETHINKDB_NAME, process.env.RETHINKDB_URL).start();
   t.truthy(db().instance().conn, 'connection is present');
 });
 
@@ -101,7 +101,7 @@ test('Database: Archive', async t => {
 
   t.deepEqual(archiveObject, properArchiveObject);
 
-  const archive = await db().instance().archive('enterprise', '100');
+  const archive = await db().instance().archive('enterprise', '1009');
 
   t.truthy(archive.id, 'Archived relationships');
 

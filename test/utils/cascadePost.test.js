@@ -3,7 +3,7 @@ import { db } from '../../src/dbSingleton';
 import { schemas } from '../fixtures';
 
 test.before('Database: Connect to database', async t => {
-  await db(schemas, process.env.RETHINKDB_URL, process.env.RETHINKDB_NAME).start();
+  await db(schemas, process.env.RETHINKDB_NAME, process.env.RETHINKDB_URL).start();
   t.truthy(db().instance().conn, 'connection is present');
 });
 
