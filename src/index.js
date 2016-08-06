@@ -13,7 +13,7 @@ export default () => ({
     const { host, name, schemas } = options;
 
     return new Promise((resolve, reject) => {
-      db(schemas, host, name)
+      db(schemas, name, host)
         .start()
         .then(resolve)
         .catch(/* istanbul ignore next */ err => (

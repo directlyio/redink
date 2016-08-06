@@ -8,7 +8,7 @@ import cascadeUpdate from './utils/cascadeUpdate';
 import cascadePost from './utils/cascadePost';
 
 export default class Redink {
-  constructor(schemas = {}, { name = '', host = '' }) {
+  constructor(schemas = {}, name = '', host = '') {
     this.schemas = schemas;
     this.name = name;
     this.host = host;
@@ -25,15 +25,13 @@ export default class Redink {
   connect() {
     const { host, name } = this;
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       r.connect({ host, db: name }).then(conn => {
         this.conn = conn;
         return resolve(conn);
-      }).catch(/* istanbul ignore next */ err => (
-        reject(
-          new RedinkDatabaseError(`Could not connect to the database: ${err.message}`)
-        )
-      ));
+      }).catch(/* istanbul ignore next */ err => {
+        throw new RedinkDatabaseError(`Could not connect to the database: ${err.message}`);
+      });
     });
   }
 
