@@ -63,7 +63,7 @@ export default class Redink {
   create(type, data) {
     const { conn, schemas } = this;
     const table = r.table(type);
-    let returnObject;
+    let returnId;
 
     const sanitizedData = sanitizeRequest(schemas[type], data);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
@@ -80,11 +80,14 @@ export default class Redink {
         .run(conn)
         .then(fetch)
         .then(record => {
-          returnObject = record;
+          returnId = record.id;
           return cascadePost(record, type, conn, schemas);
         })
         .then(cascade)
-        .then(() => resolve(serializeResponse(schemas[type], returnObject)))
+        .then(() => fetch({
+          generated_keys: [returnId],
+        }))
+        .then(record => resolve(serializeResponse(schemas[type], record)))
         .catch(err => (
           reject(
             new RedinkDatabaseError(`Error creating record of type '${type}': ${err.message}`)
