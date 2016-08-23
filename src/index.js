@@ -7,6 +7,7 @@ export const update = (type, id, data) => db().instance().update(type, id, data)
 export const archive = (type, id) => db().instance().archive(type, id);
 export const find = (type, filter = {}) => db().instance().find(type, filter);
 export const fetch = (type, id) => db().instance().fetch(type, id);
+export const fetchRelated = (type, id, field) => db().instance().fetchRelated(type, id, field);
 
 export default () => ({
   start(options) {

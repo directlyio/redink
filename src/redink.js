@@ -25,12 +25,14 @@ export default class Redink {
   connect() {
     const { host, name } = this;
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       r.connect({ host, db: name }).then(conn => {
         this.conn = conn;
         return resolve(conn);
-      }).catch(/* istanbul ignore next */ err => {
-        throw new RedinkDatabaseError(`Could not connect to the database: ${err.message}`);
+      }).catch(err => {
+        reject(
+          new RedinkDatabaseError(`Could not connect to the database: ${err.message}`)
+        );
       });
     });
   }
@@ -74,19 +76,23 @@ export default class Redink {
         .merge(fieldsToMerge)
         .run(conn);
 
+    const handleRecord = record => {
+      returnId = record.id;
+      return cascadePost(record, type, conn, schemas);
+    };
+
+    const handleReturnFetch = () => fetch({
+      generated_keys: [returnId],
+    });
+
     return new Promise((resolve, reject) => {
       table
         .insert(sanitizedData)
         .run(conn)
         .then(fetch)
-        .then(record => {
-          returnId = record.id;
-          return cascadePost(record, type, conn, schemas);
-        })
+        .then(handleRecord)
         .then(cascade)
-        .then(() => fetch({
-          generated_keys: [returnId],
-        }))
+        .then(handleReturnFetch)
         .then(record => resolve(serializeResponse(schemas[type], record)))
         .catch(err => (
           reject(
@@ -288,6 +294,61 @@ export default class Redink {
         .catch(/* istanbul ignore next */ err => (
           reject(
             new RedinkDatabaseError(`Error fetching record of type '${type}': ${err.message}`)
+          )
+        ));
+    });
+  }
+
+  /**
+   * Fetches the `field` relationship from the record with id `id` from the table `type`;
+   *
+   * ```js
+   * db.fetchRelated('user', 10, 'pets').then(pets => {
+   *   // all the pets
+   * });
+   *
+   * db.fetchRelated('user', 10, 'company').then(company => {
+   *   // company
+   * });
+   * ```
+   *
+   * @param {String} type - The table name.
+   * @param {String} id - The ID of the record that is going to be fetched.
+   * @return {(Object|Object[])}
+   */
+  fetchRelated(type, id, field) {
+    /* eslint-disable no-param-reassign */
+    id = `${id}`;
+    const { conn, schemas } = this;
+
+    const parentTable = r.table(type);
+    const relationship = schemas[type].relationships[field];
+    const { hasMany, belongsTo, embedded } = relationship;
+
+    const relatedTable = hasMany
+      ? r.table(hasMany)
+      : r.table(belongsTo);
+
+    let fetch;
+
+    if (embedded) {
+      fetch = parentTable.get(id)(field);
+    } else {
+      fetch = hasMany
+        ? relatedTable.getAll(r.args(parentTable.get(id)(field)('id'))).coerceTo('array')
+        : relatedTable.get(parentTable.get(id)(field)('id'));
+    }
+
+    const fieldsToMerge = getFieldsToMerge(schemas, hasMany || belongsTo);
+
+    return new Promise((resolve, reject) => {
+      fetch
+        .merge(fieldsToMerge)
+        .run(conn)
+        .then(resolve)
+        .catch(err => (
+          reject(
+            new RedinkDatabaseError(`Error fetching related of type '${type}': ${err.message}`)
           )
         ));
     });
