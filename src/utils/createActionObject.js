@@ -1,4 +1,4 @@
-import getRelationships from './getRelationships';
+import { getRelationships } from './';
 
  /**
   * Return an object that contains a table's relationship information (object) and fields (array).
@@ -38,7 +38,7 @@ const archiveOrPatch = fieldObject => (
  * @param {Object} schemas
  * @return {Object} actionObject
  */
-const createActionObject = (record, currentTable, schemas) => {
+export default (record, currentTable, schemas) => {
   const { relationshipObject, relationshipFields } = getRelationshipFields(currentTable, schemas);
   const actionObject = {};
 
@@ -62,5 +62,3 @@ const createActionObject = (record, currentTable, schemas) => {
 
   return actionObject;
 };
-
-export default createActionObject;

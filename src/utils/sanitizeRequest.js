@@ -1,4 +1,6 @@
-import { RedinkUtilError } from 'redink-errors';
+import missingNewIds from '../errors/missingNewIds';
+import missingOldIds from '../errors/missingOldIds';
+import * as types from '../constants/relationshipTypes';
 
 /**
  * Parses `data` and purges data fields that are not present in `schema`.
@@ -85,9 +87,10 @@ import { RedinkUtilError } from 'redink-errors';
  *
  * @param  {Object} schema - Schema representing an entity's attributes and relationships.
  * @param  {Object} data - The request body object.
+ * @param  {Boolean} isUpdate - Whether this request is an update or not.
  * @return {Object}
  */
-export default (schema, data, isUpdate = false) => {
+export default (table, schema, data, isUpdate = false) => {
   const { keys } = Object;
   const attributes = schema.attributes ? keys(schema.attributes) : [];
   const relationships = schema.relationships ? keys(schema.relationships) : [];
@@ -107,11 +110,16 @@ export default (schema, data, isUpdate = false) => {
     if (sanitized.hasOwnProperty(relationship)) {
       let ids;
 
-      if (isUpdate) {
-        if (!data[relationship].old || !data[relationship].new) {
-          throw new RedinkUtilError(
-            `Missing old and/or new fields for '${relationship}'.`
-          );
+      if (isUpdate && schema.relationships[relationship].hasOwnProperty(types.HAS_MANY)) {
+        // if isUpdate is supplied, the id is inferred to be that argument
+        const id = isUpdate;
+
+        if (!data[relationship].old) {
+          throw missingOldIds(table, relationship, id);
+        }
+
+        if (!data[relationship].new) {
+          throw missingNewIds(table, relationship, id);
         }
 
         ids = sanitized[relationship].new;
@@ -120,7 +128,7 @@ export default (schema, data, isUpdate = false) => {
       }
 
       if (
-        keys(schema.relationships[relationship]).includes('hasMany') &&
+        schema.relationships[relationship].hasOwnProperty(types.HAS_MANY) &&
         !Array.isArray(ids)
       ) {
         sanitized[relationship] = [{ id: ids, archived: false }];

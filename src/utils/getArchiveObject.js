@@ -1,10 +1,10 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable consistent-return */
 import r from 'rethinkdb';
-import patchRelationships from './patchRelationships';
 import addToQueue from './addToQueue';
-import createActionObject from './createActionObject';
 import archiveCurrentRecord from './archiveCurrentRecord';
+import createActionObject from './createActionObject';
+import patchRelationships from './patchRelationships';
 
 /**
  * Create object with deletion (and corresponding patching) instructions.
@@ -58,12 +58,8 @@ export default (originalID, originalTable, schemas, conn) => {
             queue = addToQueue(queue, actionObject);
             archiveObject = patchRelationships(archiveObject, actionObject, id, table);
 
-            return {
-              queue,
-              archiveObject,
-            };
-          })
-          .then(obj => recursivelyBuildArchiveObject(obj.queue, obj.archiveObject));
+            return recursivelyBuildArchiveObject(queue, archiveObject);
+          });
       };
 
       recursivelyBuildArchiveObject(initialQueue, initialArchiveObject);

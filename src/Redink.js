@@ -1,17 +1,20 @@
 import r from 'rethinkdb';
 import { RedinkDatabaseError } from 'redink-errors';
-import sanitizeRequest from './utils/sanitizeRequest';
-import serializeResponse from './utils/serializeResponse';
-import getFieldsToMerge from './utils/getFieldsToMerge';
-import cascadeArchive from './utils/cascadeArchive';
-import cascadeUpdate from './utils/cascadeUpdate';
-import cascadePost from './utils/cascadePost';
+import {
+  cascadeArchive,
+  cascadePost,
+  cascadeUpdate,
+  getFieldsToMerge,
+  sanitizeRequest,
+  serializeRecord,
+} from './utils';
 
 export default class Redink {
-  constructor(schemas = {}, name = '', host = '') {
+  constructor(schemas = {}, name = '', host = '', port = 28015) {
     this.schemas = schemas;
     this.name = name;
     this.host = host;
+    this.port = port;
   }
 
   /**
@@ -23,10 +26,16 @@ export default class Redink {
    * @return {Object} - RethinkDB connection.
    */
   connect() {
-    const { host, name } = this;
+    const { host, name, port } = this;
+
+    if (process.env.REDINK_DEBUG) {
+      console.log(
+        `Connect to RethinkDB at '${this.host}:${this.port}' with db '${this.name}'`
+      );
+    }
 
     return new Promise((resolve, reject) => {
-      r.connect({ host, db: name }).then(conn => {
+      r.connect({ host, db: name, port }).then(conn => {
         this.conn = conn;
         return resolve(conn);
       }).catch(err => {
@@ -38,6 +47,12 @@ export default class Redink {
   }
 
   disconnect() {
+    if (process.env.REDINK_DEBUG) {
+      console.log(
+        `Disconnecting from RethinkDB at '${this.host}:${this.port}' with db '${this.name}'`
+      );
+    }
+
     return this.conn.close();
   }
 
@@ -63,11 +78,17 @@ export default class Redink {
    * @return {Object}
    */
   create(type, data) {
+    if (process.env.REDINK_DEBUG) {
+      console.log(
+        `Creating a record of type '${type}' at '${this.host}:${this.port}' with db '${this.name}'`
+      );
+    }
+
     const { conn, schemas } = this;
     const table = r.table(type);
     let returnId;
 
-    const sanitizedData = sanitizeRequest(schemas[type], data);
+    const sanitizedData = sanitizeRequest(type, schemas[type], data);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
     const cascade = postArray => r.do(postArray).run(conn);
     const fetch = ({ generated_keys: keys }) =>
@@ -93,7 +114,7 @@ export default class Redink {
         .then(handleRecord)
         .then(cascade)
         .then(handleReturnFetch)
-        .then(record => resolve(serializeResponse(schemas[type], record)))
+        .then(record => resolve(serializeRecord(schemas, schemas[type], record)))
         .catch(err => (
           reject(
             new RedinkDatabaseError(`Error creating record of type '${type}': ${err.message}`)
@@ -122,12 +143,19 @@ export default class Redink {
    * @return {Object}
    */
   update(type, id, data) {
+    if (process.env.REDINK_DEBUG) {
+      console.log(
+        `Updating a record of type '${type}' with id ${id} at '${this.host}:${this.port}' with ` +
+        `db '${this.name}'.`
+      );
+    }
+
     /* eslint-disable no-param-reassign */
     id = `${id}`;
     const { conn, schemas } = this;
     const table = r.table(type);
 
-    const sanitized = sanitizeRequest(schemas[type], data, 'update');
+    const sanitized = sanitizeRequest(type, schemas[type], data, id);
     const updateArray = cascadeUpdate(type, id, data, schemas);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
     const fetch = () => table.get(id).merge(fieldsToMerge).run(conn);
@@ -140,7 +168,7 @@ export default class Redink {
         .run(conn)
         .then(cascade)
         .then(fetch)
-        .then(record => resolve(serializeResponse(schemas[type], record)))
+        .then(record => resolve(serializeRecord(schemas, schemas[type], record)))
         .catch(/* istanbul ignore next */ err => (
           reject(
             new RedinkDatabaseError(`Error updating record of type '${type}': ${err.message}`)
@@ -165,6 +193,13 @@ export default class Redink {
    * @return {Boolean}
    */
   archive(type, id) {
+    if (process.env.REDINK_DEBUG) {
+      console.log(
+        `Archiving a record of type '${type}' with id ${id} at '${this.host}:${this.port}' with ` +
+        `db '${this.name}'.`
+      );
+    }
+
     /* eslint-disable no-param-reassign */
     id = `${id}`;
     const { conn, schemas } = this;
@@ -229,8 +264,8 @@ export default class Redink {
    * ```js
    * db.find('user', {
    *   name: 'Dylan',
-   * }).then(user => {
-   *   // found object
+   * }).then(users => {
+   *   // all users with name 'Dylan'
    * });
    * ```
    *
@@ -241,10 +276,25 @@ export default class Redink {
    * @return {Object[]}
    */
   find(type, filter = {}) {
+    if (process.env.REDINK_DEBUG) {
+      console.log(
+        `Finding a record of type '${type}' at '${this.host}:${this.port}' with db '${this.name}'`
+      );
+    }
+
     const { conn, schemas } = this;
     const table = r.table(type);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
 
+    return table
+      .filter(filter)
+      .merge(fieldsToMerge)
+      .coerceTo('array')
+      .orderBy('id')
+      .run(conn)
+      .then(records => records.map(record => serializeRecord(schemas, schemas[type], record)));
+
+    /*
     return new Promise((resolve, reject) => {
       table
         .filter(filter)
@@ -252,15 +302,19 @@ export default class Redink {
         .coerceTo('array')
         .orderBy('id')
         .run(conn)
-        .then(records => (
-          resolve(records.map(record => serializeResponse(schemas[type], record)))
-        ))
-        .catch(/* istanbul ignore next */ err => (
+        .then(records => {
+          console.log('records:', records);
+          const serialized = records.map(record => serializeRecord(schemas[type], record));
+          console.log('serialized:', serialized);
+          return serialized;
+        })
+        .catch err => (
           reject(
             new RedinkDatabaseError(`Error finding record of type '${type}': ${err.message}`)
           )
         ));
     });
+    */
   }
 
   /**
@@ -279,6 +333,13 @@ export default class Redink {
    * @return {Object}
    */
   fetch(type, id) {
+    if (process.env.REDINK_DEBUG) {
+      console.log(
+        `Fetching a record of type '${type}' with id '${id}' at '${this.host}:${this.port}' with ` +
+        `db '${this.name}'.`
+      );
+    }
+
     /* eslint-disable no-param-reassign */
     id = `${id}`;
     const { conn, schemas } = this;
@@ -290,7 +351,7 @@ export default class Redink {
         .get(id)
         .merge(fieldsToMerge)
         .run(conn)
-        .then(record => resolve(serializeResponse(schemas[type], record)))
+        .then(record => resolve(serializeRecord(schemas, schemas[type], record)))
         .catch(/* istanbul ignore next */ err => (
           reject(
             new RedinkDatabaseError(`Error fetching record of type '${type}': ${err.message}`)
@@ -317,17 +378,21 @@ export default class Redink {
    * @return {(Object|Object[])}
    */
   fetchRelated(type, id, field) {
+    if (process.env.REDINK_DEBUG) {
+      console.log(
+        `Fetching '${field}' from a record of type '${type}' with id '${id}' at ` +
+        `'${this.host}:${this.port}' with db '${this.name}'.`
+      );
+    }
+
     /* eslint-disable no-param-reassign */
     id = `${id}`;
     const { conn, schemas } = this;
 
     const parentTable = r.table(type);
     const relationship = schemas[type].relationships[field];
-    const { hasMany, belongsTo, embedded } = relationship;
-
-    const relatedTable = hasMany
-      ? r.table(hasMany)
-      : r.table(belongsTo);
+    const { hasMany, belongsTo, hasOne, embedded } = relationship;
+    const relatedTable = r.table(hasMany || belongsTo || hasOne);
 
     let fetch;
 

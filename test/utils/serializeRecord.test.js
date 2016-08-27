@@ -1,8 +1,8 @@
 import test from 'ava';
-import serializeResponse from '../../src/utils/serializeResponse';
+import serializeRecord from '../../src/utils/serializeRecord';
 import { schemas } from '../fixtures';
 
-test('Serialize: Serialize body', t => {
+test('should properly serialize a single record', t => {
   const schema = schemas.individual;
 
   const expected = {
@@ -24,7 +24,7 @@ test('Serialize: Serialize body', t => {
     },
   };
 
-  const serialized = serializeResponse(schema, {
+  const serialized = serializeRecord(schema, {
     id: '6',
     name: 'CJ',
     email: 'brewercalvinj@gmail.com',
