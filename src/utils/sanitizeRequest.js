@@ -1,5 +1,7 @@
 import missingNewIds from '../errors/missingNewIds';
 import missingOldIds from '../errors/missingOldIds';
+import missingNewId from '../errors/missingNewId';
+import missingOldId from '../errors/missingOldId';
 import * as types from '../constants/relationshipTypes';
 
 /**
@@ -110,16 +112,31 @@ export default (table, schema, data, isUpdate = false) => {
     if (sanitized.hasOwnProperty(relationship)) {
       let ids;
 
-      if (isUpdate && schema.relationships[relationship].hasOwnProperty(types.HAS_MANY)) {
+      if (isUpdate) {
         // if isUpdate is supplied, the id is inferred to be that argument
         const id = isUpdate;
 
-        if (!data[relationship].old) {
-          throw missingOldIds(table, relationship, id);
+        if (schema.relationships[relationship].hasOwnProperty(types.HAS_MANY)) {
+          if (!data[relationship].old) {
+            throw missingOldIds(table, relationship, id);
+          }
+
+          if (!data[relationship].new) {
+            throw missingNewIds(table, relationship, id);
+          }
         }
 
-        if (!data[relationship].new) {
-          throw missingNewIds(table, relationship, id);
+        if (
+          schema.relationships[relationship].hasOwnProperty(types.BELONGS_TO) ||
+          schema.relationships[relationship].hasOwnProperty(types.HAS_ONE)
+        ) {
+          if (!data[relationship].old) {
+            throw missingOldId(table, relationship, id);
+          }
+
+          if (!data[relationship].new) {
+            throw missingNewId(table, relationship, id);
+          }
         }
 
         ids = sanitized[relationship].new;

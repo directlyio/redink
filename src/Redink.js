@@ -1,10 +1,12 @@
 import r from 'rethinkdb';
 import { RedinkDatabaseError } from 'redink-errors';
+import hasValidRelationships from './queries/hasValidRelationships';
 import {
   cascadeArchive,
   cascadePost,
   cascadeUpdate,
   getFieldsToMerge,
+  getRelationships,
   sanitizeRequest,
   serializeRecord,
 } from './utils';
@@ -90,6 +92,7 @@ export default class Redink {
 
     const sanitizedData = sanitizeRequest(type, schemas[type], data);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
+    const serialize = (record) => serializeRecord(schemas, schemas[type], record);
     const cascade = postArray => r.do(postArray).run(conn);
     const fetch = ({ generated_keys: keys }) =>
       table
@@ -106,21 +109,14 @@ export default class Redink {
       generated_keys: [returnId],
     });
 
-    return new Promise((resolve, reject) => {
-      table
-        .insert(sanitizedData)
-        .run(conn)
-        .then(fetch)
-        .then(handleRecord)
-        .then(cascade)
-        .then(handleReturnFetch)
-        .then(record => resolve(serializeRecord(schemas, schemas[type], record)))
-        .catch(err => (
-          reject(
-            new RedinkDatabaseError(`Error creating record of type '${type}': ${err.message}`)
-          )
-        ));
-    });
+    return table
+      .insert(sanitizedData)
+      .run(conn)
+      .then(fetch)
+      .then(handleRecord)
+      .then(cascade)
+      .then(handleReturnFetch)
+      .then(serialize);
   }
 
   /**
@@ -145,7 +141,7 @@ export default class Redink {
   update(type, id, data) {
     if (process.env.REDINK_DEBUG) {
       console.log(
-        `Updating a record of type '${type}' with id ${id} at '${this.host}:${this.port}' with ` +
+        `Updating a record of type '${type}' with id '${id}' at '${this.host}:${this.port}' with ` +
         `db '${this.name}'.`
       );
     }
@@ -156,25 +152,47 @@ export default class Redink {
     const table = r.table(type);
 
     const sanitized = sanitizeRequest(type, schemas[type], data, id);
+
+    const hasAllValidRelationships = () => {
+      const relationships = getRelationships(type, schemas);
+      const validArray = Object.keys(relationships).map(relationship => {
+        if (!data.hasOwnProperty(relationship)) return null;
+
+        return hasValidRelationships(
+          relationships[relationship].table,
+          data[relationship].new
+        ).run(conn);
+      }).filter(Boolean);
+
+      const throwIfNotTruthy = x => {
+        const isTruthy = !!x;
+
+        if (!isTruthy) {
+          throw new Error(
+            'Tried updating a record with a relationship that points to an entity that does not ' +
+            'exist'
+          );
+        }
+
+        return true;
+      };
+
+      const areAllTrue = (arr) => arr.every(throwIfNotTruthy);
+      return Promise.all(validArray).then(areAllTrue);
+    };
+
+    const updateRecord = table.get(id).update(sanitized).run(conn);
     const updateArray = cascadeUpdate(type, id, data, schemas);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
+    const serialize = (record) => serializeRecord(schemas, schemas[type], record);
     const fetch = () => table.get(id).merge(fieldsToMerge).run(conn);
     const cascade = () => r.do(updateArray).run(conn);
 
-    return new Promise((resolve, reject) => {
-      table
-        .get(id)
-        .update(sanitized)
-        .run(conn)
-        .then(cascade)
-        .then(fetch)
-        .then(record => resolve(serializeRecord(schemas, schemas[type], record)))
-        .catch(/* istanbul ignore next */ err => (
-          reject(
-            new RedinkDatabaseError(`Error updating record of type '${type}': ${err.message}`)
-          )
-        ));
-    });
+    return hasAllValidRelationships()
+      .then(updateRecord)
+      .then(cascade)
+      .then(fetch)
+      .then(serialize);
   }
 
   /**

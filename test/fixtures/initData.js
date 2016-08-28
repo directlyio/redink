@@ -9,6 +9,9 @@ export default {
         id: '1',
         archived: false,
       },
+      meta: {
+        archived: false,
+      },
     }],
     [types.COMPANY_TABLE]: [{
       id: '1',
@@ -17,6 +20,9 @@ export default {
         id: '1',
         archived: false,
       }],
+      meta: {
+        archived: false,
+      },
     }],
     [types.PLANET_TABLE]: [{
       id: '1',
@@ -25,6 +31,9 @@ export default {
         id: '1',
         archived: false,
       }],
+      meta: {
+        archived: false,
+      },
     }],
     [types.USER_TABLE]: [{
       id: '1',
@@ -39,6 +48,9 @@ export default {
       },
       planet: {
         id: '1',
+        archived: false,
+      },
+      meta: {
         archived: false,
       },
     }],

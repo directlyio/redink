@@ -1,4 +1,5 @@
 import getRelationships from './getRelationships';
+import * as types from '../constants/relationshipTypes';
 
 /**
  * Prepares a single record for the client by purging unimportant meta information. The `record`
@@ -71,21 +72,22 @@ export default (schemas, schema, record) => {
 
   const prepareRelationship = (table) => (relationship) => {
     const parsed = {};
+    const blacklistedKeys = ['archived', 'meta'];
     const relationshipDescription = getRelationships(table, schemas);
 
     keys(relationship).forEach(key => {
-      if (key === 'archived') return;
+      if (blacklistedKeys.includes(key)) return;
 
       if (keys(relationshipDescription).includes(key)) {
         if (
-          relationshipDescription[key].original === 'belongsTo' ||
-          relationshipDescription[key].original === 'hasOne'
+          relationshipDescription[key].original === types.BELONGS_TO ||
+          relationshipDescription[key].original === types.HAS_ONE
         ) {
           parsed[key] = relationship[key].id;
           return;
         }
 
-        if (relationshipDescription[key].original === 'hasMany') {
+        if (relationshipDescription[key].original === types.HAS_MANY) {
           parsed[key] = relationship[key].map(rel => rel.id);
           return;
         }
@@ -97,11 +99,16 @@ export default (schemas, schema, record) => {
     return parsed;
   };
 
-  const parseRelationship = (table, relationship) => (
-    Array.isArray(relationship)
+  const parseRelationship = (table, relationship) => {
+    /* eslint-disable no-param-reassign */
+    if (relationship.hasOwnProperty('meta')) {
+      delete relationship.meta;
+    }
+
+    return Array.isArray(relationship)
       ? relationship.map(prepareRelationship(table))
-      : prepareRelationship(table)(relationship)
-  );
+      : prepareRelationship(table)(relationship);
+  };
 
   // hydrate attributes
   for (const attribute of keys(attributes)) {

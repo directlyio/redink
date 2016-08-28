@@ -97,7 +97,11 @@ test('should fail to update the user\'s `hasOne` relationship', async t => {
       name: 'Benny Franklin',
       company: {
         old: '1',
-        new: '2',
+        new: '1',
+      },
+      pets: {
+        old: ['1'],
+        new: ['1', '2'],
       },
     };
 
@@ -109,7 +113,9 @@ test('should fail to update the user\'s `hasOne` relationship', async t => {
     console.log('err:', err);
     const conn = await r.connect({ host: 'localhost', port: db().instance().port });
     const users = await r.table('user').coerceTo('array').run(conn);
-    console.log('users:', users[0].company);
+    const companies = await r.table('company').coerceTo('array').run(conn);
+    console.log('users:', users);
+    console.log('companies:', companies);
     t.truthy(err);
   }
 });
