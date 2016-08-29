@@ -108,14 +108,6 @@ test('should fail to update the user\'s `hasOne` relationship', async t => {
     await db().instance().update('user', '1', update);
     t.fail();
   } catch (err) {
-    const r = require('rethinkdb');
-
-    console.log('err:', err);
-    const conn = await r.connect({ host: 'localhost', port: db().instance().port });
-    const users = await r.table('user').coerceTo('array').run(conn);
-    const companies = await r.table('company').coerceTo('array').run(conn);
-    console.log('users:', users);
-    console.log('companies:', companies);
     t.truthy(err);
   }
 });

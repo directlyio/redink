@@ -158,10 +158,12 @@ export default class Redink {
       const validArray = Object.keys(relationships).map(relationship => {
         if (!data.hasOwnProperty(relationship)) return null;
 
+        console.log('conn:', !!conn);
+
         return hasValidRelationships(
           relationships[relationship].table,
           data[relationship].new
-        ).run(conn);
+        ).run(conn).catch(err => console.log('ERR WTF:', err))
       }).filter(Boolean);
 
       const throwIfNotTruthy = x => {
@@ -170,7 +172,7 @@ export default class Redink {
         if (!isTruthy) {
           throw new Error(
             'Tried updating a record with a relationship that points to an entity that does not ' +
-            'exist'
+            'exist.'
           );
         }
 
@@ -304,35 +306,16 @@ export default class Redink {
     const table = r.table(type);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
 
+    const serializeRecords = (records) =>
+      records.map(record => serializeRecord(schemas, schemas[type], record));
+
     return table
       .filter(filter)
       .merge(fieldsToMerge)
       .coerceTo('array')
       .orderBy('id')
       .run(conn)
-      .then(records => records.map(record => serializeRecord(schemas, schemas[type], record)));
-
-    /*
-    return new Promise((resolve, reject) => {
-      table
-        .filter(filter)
-        .merge(fieldsToMerge)
-        .coerceTo('array')
-        .orderBy('id')
-        .run(conn)
-        .then(records => {
-          console.log('records:', records);
-          const serialized = records.map(record => serializeRecord(schemas[type], record));
-          console.log('serialized:', serialized);
-          return serialized;
-        })
-        .catch err => (
-          reject(
-            new RedinkDatabaseError(`Error finding record of type '${type}': ${err.message}`)
-          )
-        ));
-    });
-    */
+      .then(serializeRecords);
   }
 
   /**

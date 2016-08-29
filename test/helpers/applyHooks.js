@@ -3,6 +3,9 @@ import redink from '../../src';
 import { db } from '../../src/dbSingleton';
 import { schemas, initData } from '../fixtures';
 
+const CLEANUP_DELAY = 500;
+const stop = () => db().stop();
+
 export default (test) => {
   let port;
 
@@ -22,6 +25,8 @@ export default (test) => {
   ));
 
   test.after.always('should teardown the singleton', () => (
-    db().stop().then(cleanup)
+    new Promise(resolve => setTimeout(resolve, CLEANUP_DELAY))
+      .then(stop)
+      .then(cleanup)
   ));
 };
