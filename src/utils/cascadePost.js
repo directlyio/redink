@@ -1,7 +1,9 @@
 import { RedinkUtilError } from 'redink-errors';
-import getRelationships from '../utils/getRelationships';
-import { postRecordMany, postRecordOne } from '../utils/cascadeQueries';
-import _ from 'lodash';
+import getRelationships from './getRelationships';
+import postRecordMany from '../queries/postRecordMany';
+import postRecordOne from '../queries/postRecordOne';
+import { forEach } from 'lodash';
+import * as types from '../constants/relationshipTypes';
 
 /**
  * Create an array of RethinkDB queries to push to the parent postArray.
@@ -16,14 +18,16 @@ const createPostArray = (entity, field, id) => {
   const { table, inverseField, original, inverse } = entity;
   const postArray = [];
 
-  if (original === 'belongsTo' && inverse === 'hasMany') {
+  if (original === types.BELONGS_TO && inverse === types.HAS_MANY) {
     postArray.push(postRecordMany(table, field.id, inverseField, id));
-  } else if (original === 'hasMany' && inverse === 'hasMany') {
-    _.forEach(field, obj => {
+  } else if (original === types.HAS_MANY && inverse === types.HAS_MANY) {
+    forEach(field, obj => {
       postArray.push(postRecordMany(table, obj.id, inverseField, id));
     });
-  } else if (original === 'belongsTo' && inverse === 'hasOne') {
+  } else if (original === types.BELONGS_TO && inverse === types.HAS_ONE) {
     postArray.push(postRecordOne(table, field.id, inverseField, id));
+  } else if (original === types.HAS_ONE && inverse === types.HAS_MANY) {
+    postArray.push(postRecordMany(table, field.id, inverseField, id));
   }
 
   return postArray;
@@ -47,7 +51,7 @@ const createPostArray = (entity, field, id) => {
 export default (record, table, connection, schemas) => {
   const postArray = [];
 
-  const relationships = getRelationships(table, schemas);
+  const relationships = getRelationships(schemas, table);
 
   Object.keys(relationships).forEach(relationship => {
     if (record.hasOwnProperty(relationship)) {

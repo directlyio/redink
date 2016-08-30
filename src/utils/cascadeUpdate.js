@@ -1,9 +1,10 @@
+import archiveManyRelationship from '../queries/archiveManyRelationship';
+import postRecordMany from '../queries/postRecordMany';
+import postRecordOne from '../queries/postRecordOne';
+import updateAppendRecord from '../queries/updateAppendRecord';
+import updateArchiveRecord from '../queries/updateArchiveRecord';
 import getRelationships from '../utils/getRelationships';
-import { archiveManyRelationship,
-         postRecordMany,
-         postRecordOne,
-         updateAppendRecord,
-         updateArchiveRecord } from '../utils/cascadeQueries';
+import * as types from '../constants/relationshipTypes';
 
 /**
  * Create an array of RethinkDB queries based on the relationship and its inverse.
@@ -18,14 +19,22 @@ const createPostArray = (entity, data, id) => {
   const { table, inverseField, original, inverse } = entity;
   const updateArray = [];
 
-  if (original === 'belongsTo' && inverse === 'hasMany') {
+  if (original === types.BELONGS_TO && inverse === types.HAS_MANY) {
     updateArray.push(archiveManyRelationship(table, inverseField, data.old, id));
     updateArray.push(postRecordMany(table, data.new, inverseField, id));
-  } else if (original === 'hasMany' && inverse === 'hasMany') {
+  } else if (original === types.HAS_MANY && inverse === types.HAS_MANY) {
     updateArray.push(updateAppendRecord(table, inverseField, data, id));
     updateArray.push(updateArchiveRecord(table, inverseField, data, id));
-  } else if (original === 'belongsTo' && inverse === 'hasOne') {
+  } else if (original === types.BELONGS_TO && inverse === types.HAS_ONE) {
     updateArray.push(postRecordOne(table, data.new, inverseField, id));
+  } else if (original === types.HAS_ONE && inverse === types.HAS_MANY) {
+    updateArray.push(archiveManyRelationship(table, inverseField, data.old, id));
+    updateArray.push(postRecordMany(table, data.new, inverseField, id));
+  } else if (original === types.HAS_MANY && inverse === types.HAS_ONE) {
+    throw new Error(
+      'Tried updating a \'hasMany\' relationship with a \'hasOne\' inverse. Please update the ' +
+      '\'hasOne\' side.'
+    );
   }
 
   return updateArray;
@@ -48,7 +57,7 @@ const createPostArray = (entity, data, id) => {
 export default (table, id, data, schemas) => {
   const updateArray = [];
 
-  const relationships = getRelationships(table, schemas);
+  const relationships = getRelationships(schemas, table);
 
   Object.keys(relationships).forEach(relationship => {
     if (data.hasOwnProperty(relationship)) {

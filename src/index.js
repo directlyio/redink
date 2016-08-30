@@ -10,12 +10,9 @@ export const fetch = (type, id) => db().instance().fetch(type, id);
 export const fetchRelated = (type, id, field) => db().instance().fetchRelated(type, id, field);
 
 export default () => ({
-  start(options) {
-    const { host, name, schemas } = options;
-
+  start({ host, name, schemas, port }) {
     return new Promise((resolve, reject) => {
-      db(schemas, name, host)
-        .start()
+      db(schemas, name, host, port).start()
         .then(resolve)
         .catch(/* istanbul ignore next */ err => (
           reject(new RedinkError(`Could not start Redink: ${err.message}`))

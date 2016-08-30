@@ -1,4 +1,5 @@
 import r from 'rethinkdb';
+import invalidSchemaType from '../errors/invalidSchemaType';
 
 /**
  * Merges a table object with its relationships.
@@ -57,7 +58,11 @@ import r from 'rethinkdb';
  * @param  {Object} results - Un-merged table object.
  * @return {Function}
  */
-export default (schemas, type) => record => {
+export default (schemas, type) => (record) => {
+  if (!schemas.hasOwnProperty(type)) {
+    throw invalidSchemaType(type);
+  }
+
   if (!('relationships' in schemas[type])) return r({});
 
   const { relationships } = schemas[type];
@@ -72,17 +77,40 @@ export default (schemas, type) => record => {
     const table = r.table(hasMany || belongsTo || hasOne);
     const hasFields = record.hasFields(key);
 
-    // merge `hasMany`, `belongsTo`, and `hasOne` relationships
+    const mapHasManyToIds = (rels) => rels.filter(rel => r.not(rel('archived')))('id');
+
     return hasMany
       ? (
           r.branch(hasFields, {
-            [key]: table.getAll(r.args(record(key)('id'))).coerceTo('array').orderBy('id'),
+            [key]: table.getAll(r.args(mapHasManyToIds(record(key))))
+              .filter(relatedRecord => r.not(relatedRecord('meta')('archived')))
+              .coerceTo('array')
+              .orderBy('id'),
           }, {})
         )
       : (
-          r.branch(hasFields, {
+          r.branch(hasFields.and(r.not(record(key)('archived'))), {
             [key]: table.get(record(key)('id')),
           }, {})
         );
   })));
+
+    // merge `hasMany`, `belongsTo`, and `hasOne` relationships
+    /*
+    return hasMany
+      ? (
+          r.branch(hasFields, {
+            [key]: table.getAll(r.args(record(key)('id')))
+              .filter(relatedRecord => r.not(relatedRecord('meta')('archived')))
+              .coerceTo('array')
+              .orderBy('id'),
+          }, {})
+        )
+      : (
+          r.branch(hasFields.and(r.not(record(key)('archived'))), {
+            [key]: table.get(record(key)('id')),
+          }, {})
+        );
+  })));
+  */
 };

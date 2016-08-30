@@ -1,4 +1,11 @@
-import { RedinkUtilError } from 'redink-errors';
+import missingNewIds from '../errors/missingNewIds';
+import missingOldIds from '../errors/missingOldIds';
+import missingNewId from '../errors/missingNewId';
+import missingOldId from '../errors/missingOldId';
+import invalidSchemaType from '../errors/invalidSchemaType';
+import * as types from '../constants/relationshipTypes';
+
+const { keys } = Object;
 
 /**
  * Parses `data` and purges data fields that are not present in `schema`.
@@ -85,10 +92,15 @@ import { RedinkUtilError } from 'redink-errors';
  *
  * @param  {Object} schema - Schema representing an entity's attributes and relationships.
  * @param  {Object} data - The request body object.
+ * @param  {Boolean} isUpdate - Whether this request is an update or not.
  * @return {Object}
  */
-export default (schema, data, isUpdate = false) => {
-  const { keys } = Object;
+export default (schemas, type, data, isUpdate = false) => {
+  if (!schemas.hasOwnProperty(type)) {
+    throw invalidSchemaType(type);
+  }
+
+  const schema = schemas[type];
   const attributes = schema.attributes ? keys(schema.attributes) : [];
   const relationships = schema.relationships ? keys(schema.relationships) : [];
   const fields = attributes.concat(relationships);
@@ -108,10 +120,30 @@ export default (schema, data, isUpdate = false) => {
       let ids;
 
       if (isUpdate) {
-        if (!data[relationship].old || !data[relationship].new) {
-          throw new RedinkUtilError(
-            `Missing old and/or new fields for '${relationship}'.`
-          );
+        // if isUpdate is supplied, the id is inferred to be that argument
+        const id = isUpdate;
+
+        if (schema.relationships[relationship].hasOwnProperty(types.HAS_MANY)) {
+          if (!data[relationship].old) {
+            throw missingOldIds(type, relationship, id);
+          }
+
+          if (!data[relationship].new) {
+            throw missingNewIds(type, relationship, id);
+          }
+        }
+
+        if (
+          schema.relationships[relationship].hasOwnProperty(types.BELONGS_TO) ||
+          schema.relationships[relationship].hasOwnProperty(types.HAS_ONE)
+        ) {
+          if (!data[relationship].old) {
+            throw missingOldId(type, relationship, id);
+          }
+
+          if (!data[relationship].new) {
+            throw missingNewId(type, relationship, id);
+          }
         }
 
         ids = sanitized[relationship].new;
@@ -120,7 +152,7 @@ export default (schema, data, isUpdate = false) => {
       }
 
       if (
-        keys(schema.relationships[relationship]).includes('hasMany') &&
+        schema.relationships[relationship].hasOwnProperty(types.HAS_MANY) &&
         !Array.isArray(ids)
       ) {
         sanitized[relationship] = [{ id: ids, archived: false }];

@@ -8,7 +8,7 @@ import getRelationships from './getRelationships';
   * @return {Object}
   */
 const getRelationshipFields = (table, schemas) => {
-  const relationshipObject = getRelationships(table, schemas);
+  const relationshipObject = getRelationships(schemas, table);
   const relationshipFields = Object.keys(relationshipObject);
 
   return {
@@ -38,7 +38,7 @@ const archiveOrPatch = fieldObject => (
  * @param {Object} schemas
  * @return {Object} actionObject
  */
-const createActionObject = (record, currentTable, schemas) => {
+export default (record, currentTable, schemas) => {
   const { relationshipObject, relationshipFields } = getRelationshipFields(currentTable, schemas);
   const actionObject = {};
 
@@ -62,5 +62,3 @@ const createActionObject = (record, currentTable, schemas) => {
 
   return actionObject;
 };
-
-export default createActionObject;

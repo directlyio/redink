@@ -1,6 +1,5 @@
-import getArchiveObject from './getArchiveObject';
-import traversePatchObject from './traversePatchObject';
 import archiveRecord from '../queries/archiveRecord';
+import traversePatchObject from './traversePatchObject';
 
 /**
  * Create the archive array to pass to r.do().
@@ -21,7 +20,7 @@ import archiveRecord from '../queries/archiveRecord';
  * @param  {Object} schemas - Schemas passed in from db instance.
  * @return {Array} - Array of RethinkDB queries.
  */
-export const createArchiveArray = (archiveObject, schemas) => {
+export default (archiveObject, schemas) => {
   const archiveArray = [];
   const { archive, patch } = archiveObject;
   const { keys } = Object;
@@ -34,24 +33,3 @@ export const createArchiveArray = (archiveObject, schemas) => {
 
   return archiveArray;
 };
-
-/**
- * Archive the relationships of a record that is 'deleted'.
- * Called in services delete method {@link Database.delete}.
- * Gets the archiveObject from @see getArchiveObject and passes it to @see createArchiveArray.
- *
- * ```
- * // example call with params
- * cascadeArchive('100', 'enterprise', conn, schemas);
- * ```
- *
- * @param {String} id - ID of record to archive.
- * @param {String} table - Table name of record to archive.
- * @param {Object} connection - Connection to rethink database.
- * @param {Object} schemas - Schemas to determine relationship type.
- * @return {Boolean}
- */
-export default (id, table, connection, schemas) => (
-  getArchiveObject(id, table, schemas, connection)
-    .then(archiveObject => createArchiveArray(archiveObject, schemas))
-);

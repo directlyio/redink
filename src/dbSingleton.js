@@ -1,10 +1,16 @@
-import Redink from './redink';
-import { RedinkError } from 'redink-errors';
+import Redink from './Redink';
 
-function db(schemas = {}, name = '', host = '') {
+export function db(schemas = {}, name = '', host = '', port = 28015) {
   if (db.instance) {
     return {
       instance() {
+        if (process.env.REDINK_DEBUG) {
+          console.log(
+            `Accessing Redink\'s singleton, db: ${db.instance.name}, host: ${db.instance.host}, ` +
+            `port: ${db.instance.port}.`
+          );
+        }
+
         return db.instance;
       },
 
@@ -16,14 +22,16 @@ function db(schemas = {}, name = '', host = '') {
 
   return {
     start() {
-      db.instance = new Redink(schemas, name, host);
+      db.instance = new Redink(schemas, name, host, port);
       return db.instance.connect();
     },
 
     instance() {
-      throw new RedinkError('Error in db singleton: Redink not initialized.');
+      throw new Error(
+        'Tried invoking Redink\'s singleton instance without first starting it. This could be ' +
+        'because you tried importing `create`, `fetch`, etc, from Redink without creating a ' +
+        'connection. Please try running redink().start() before invoking any of Redink\'s methods.'
+      );
     },
   };
 }
-
-export { db };
