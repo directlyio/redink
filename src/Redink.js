@@ -1,7 +1,6 @@
 import r from 'rethinkdb';
 
 import invalidRelationshipType from './errors/invalidRelationshipType';
-import nonExistingRelationship from './errors/nonExistingRelationship';
 
 import cascadeArchive from './utils/cascadeArchive';
 import cascadePost from './utils/cascadePost';
@@ -337,7 +336,10 @@ export default class Redink {
 
     if (relationshipType === types.HAS_MANY) {
       const finalize = ([count, records]) => serialize(schemas, relatedType, records, count);
-      const ids = r.args(parentTable.get(id)(field))('id');
+
+      const ids = r.args(
+        parentTable.get(id)(field).filter(rel => r.not(rel('archived')))('id')
+      );
 
       return r.do([
         relatedTable.getAll(ids).filter(parsedFilters).count(),

@@ -9,7 +9,7 @@ export default (type, id, relationships) => {
     .map(key => ([key, relationships[key]]))
     .forEach(([key, isValid]) => {
       if (!isValid) {
-        throw nonExistingRelationship(type, id, key);
+        throw nonExistingRelationship(type, key, id);
       }
     });
 };
