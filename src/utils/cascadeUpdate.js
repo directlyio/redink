@@ -30,6 +30,11 @@ const createPostArray = (entity, data, id) => {
   } else if (original === types.HAS_ONE && inverse === types.HAS_MANY) {
     updateArray.push(archiveManyRelationship(table, inverseField, data.old, id));
     updateArray.push(postRecordMany(table, data.new, inverseField, id));
+  } else if (original === types.HAS_MANY && inverse === types.HAS_ONE) {
+    throw new Error(
+      'Tried updating a \'hasMany\' relationship with a \'hasOne\' inverse. Please update the ' +
+      '\'hasOne\' side.'
+    );
   }
 
   return updateArray;

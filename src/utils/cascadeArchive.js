@@ -1,5 +1,5 @@
-import getArchiveObject from '../utils/getArchiveObject';
-import traversePatchObject from '../utils/traversePatchObject';
+import getArchiveObject from './getArchiveObject';
+import traversePatchObject from './traversePatchObject';
 import archiveRecord from '../queries/archiveRecord';
 
 /**
@@ -52,10 +52,6 @@ export const createArchiveArray = (archiveObject, schemas) => {
  * @return {Boolean}
  */
 export default (id, table, connection, schemas) => (
-  new Promise((resolve, reject) => {
-    getArchiveObject(id, table, schemas, connection)
-      .then(archiveObject => createArchiveArray(archiveObject, schemas))
-      .then(resolve)
-      .catch(reject);
-  })
+  getArchiveObject(id, table, schemas, connection)
+    .then(archiveObject => createArchiveArray(archiveObject, schemas))
 );

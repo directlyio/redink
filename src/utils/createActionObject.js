@@ -1,4 +1,4 @@
-import { getRelationships } from './';
+import getRelationships from './getRelationships';
 
  /**
   * Return an object that contains a table's relationship information (object) and fields (array).

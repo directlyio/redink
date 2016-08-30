@@ -2,7 +2,6 @@ process.env.BABEL_ENV = 'development';
 
 import test from 'ava';
 import applyHooks from './helpers/applyHooks';
-import r from 'rethinkdb';
 
 import { updateData } from './fixtures';
 import { db } from '../src/dbSingleton';
@@ -13,7 +12,7 @@ import { message as missingNewIdMessage } from '../src/errors/missingNewId';
 import { message as nonExistingRelationshipMessage } from '../src/errors/nonExistingRelationship';
 
 applyHooks(test, updateData);
-/*
+
 test('should successfully update a user', async t => {
   try {
     const update = {
@@ -43,7 +42,6 @@ test('should successfully update a user', async t => {
 
     t.deepEqual(user, expected);
   } catch (err) {
-    console.log('err:', err);
     t.fail(err);
   }
 });
@@ -163,7 +161,7 @@ test('should fail to update the user\'s `belongsTo` relationship', async t => {
   }
 });
 
-test('should fail??? to update the company\'s `hasMany` relationship', async t => {
+test('should fail to update the company\'s `hasMany` relationship', async t => {
   try {
     const update = {
       employees: {
@@ -172,26 +170,16 @@ test('should fail??? to update the company\'s `hasMany` relationship', async t =
       },
     };
 
-    const company = await db().instance().update('company', '2', update);
-    const user = await db().instance().fetch('user', '1');
-    console.log('company:', company);
-    console.log('user:', user);
+    await db().instance().update('company', '2', update);
     t.fail();
   } catch (err) {
-    console.log('err:', err);
+    // FIXME: strict message
     t.truthy(err);
   }
 });
-*/
 
 test('should update an animal\'s `belongsTo` relationship', async t => {
   try {
-    const ownerBefore = await db().instance().fetchRelated('animal', '2', 'owner');
-    console.log('ownerBefore:', ownerBefore);
-
-    const petsBefore = await db().instance().fetchRelated('user', '2', 'pets');
-    console.log('petsBefore:', petsBefore);
-
     const update = {
       owner: {
         old: '2',
@@ -199,26 +187,43 @@ test('should update an animal\'s `belongsTo` relationship', async t => {
       },
     };
 
-    const updateAnimal = await db().instance().update('animal', '2', update);
-    console.log('updateAnimal:', updateAnimal);
+    const originalOwnerBefore = await db().instance().fetch('user', '2');
+    t.deepEqual(originalOwnerBefore.pets, [{
+      id: '2',
+      species: 'Cat',
+      owner: '2',
+    }]);
 
-    const ownerAfter = await db().instance().fetchRelated('animal', '2', 'owner');
-    console.log('ownerAfter:', ownerAfter);
+    const newOwnerBefore = await db().instance().fetch('user', '1');
+    t.deepEqual(newOwnerBefore.pets, [{
+      id: '1',
+      species: 'Dog',
+      owner: '1',
+    }]);
 
-    const petsAfter = await db().instance().fetchRelated('user', '2', 'pets');
-    console.log('petsAfter:', petsAfter);
+    const animal = await db().instance().update('animal', '2', update);
+    t.deepEqual(animal.owner, {
+      id: '1',
+      name: 'Benny Franklin',
+      pets: ['1', '2'],
+      company: '1',
+      planet: '1',
+    });
 
     const originalOwnerAfter = await db().instance().fetch('user', '2');
-    console.log('originalOwnerAfter:', originalOwnerAfter);
+    t.deepEqual(originalOwnerAfter.pets, []);
 
-    const conn = await r.connect({ host: 'localhost', port: db().instance().port });
-    const users = await r.table('user').get('2').run(conn);
-
-    console.log('users:', users);
-
-    t.fail();
+    const newOwnerAfter = await db().instance().fetch('user', '1');
+    t.deepEqual(newOwnerAfter.pets, [{
+      id: '1',
+      species: 'Dog',
+      owner: '1',
+    }, {
+      id: '2',
+      species: 'Cat',
+      owner: '1',
+    }]);
   } catch (err) {
-    console.log('err:', err);
     t.fail(err);
   }
-})
+});

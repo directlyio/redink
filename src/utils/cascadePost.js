@@ -1,5 +1,5 @@
 import { RedinkUtilError } from 'redink-errors';
-import { getRelationships } from './';
+import getRelationships from './getRelationships';
 import postRecordMany from '../queries/postRecordMany';
 import postRecordOne from '../queries/postRecordOne';
 import { forEach } from 'lodash';

@@ -1,6 +1,6 @@
 import archiveManyRelationship from '../queries/archiveManyRelationship';
 import archiveSingleRelationship from '../queries/archiveSingleRelationship';
-import getRelationships from '../utils/getRelationships';
+import getRelationships from './getRelationships';
 
 /**
  * Traverse the patch object from `getArchiveObject`.

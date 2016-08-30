@@ -1,5 +1,5 @@
 import archiveRecord from '../queries/archiveRecord';
-import { traversePatchObject } from './';
+import traversePatchObject from './traversePatchObject';
 
 /**
  * Create the archive array to pass to r.do().

@@ -191,22 +191,18 @@ export default class Redink {
     /* eslint-disable no-param-reassign */
     id = `${id}`;
     const { conn, schemas } = this;
-    const table = r.table(type);
-    const query = new Promise((resolve) =>
-      resolve(cascadeArchive(id, type, conn, schemas)));
+    const table = getTable(schemas, type);
+    const query = cascadeArchive(id, type, conn, schemas);
 
     const fieldsToMerge = getFieldsToMerge(schemas, type);
     const fetch = () => table.get(id).merge(fieldsToMerge).run(conn);
+    const runArchiveArray = (archiveArray) => r.do(archiveArray).run(conn);
+    const finalize = (record) => serialize(schemas, type, record);
 
-    return query.then(reql => (
-      new Promise((resolve, reject) => {
-        r.do(reql)
-          .run(conn)
-          .then(fetch)
-          .then(resolve)
-          .catch(err => reject(err));
-      })
-    ));
+    return query
+      .then(runArchiveArray)
+      .then(fetch)
+      .then(finalize);
   }
 
   /**
@@ -241,6 +237,9 @@ export default class Redink {
     const fieldsToMerge = getFieldsToMerge(schemas, type);
     const parsedFilters = parseFilters(filter, relationships);
     const finalize = ([count, records]) => serialize(schemas, type, records, count);
+
+    // filter out archived entities
+    parsedFilters.meta = { archived: false };
 
     return r.do([
       table.filter(parsedFilters).count(),
@@ -340,6 +339,9 @@ export default class Redink {
       const ids = r.args(
         parentTable.get(id)(field).filter(rel => r.not(rel('archived')))('id')
       );
+
+      // filter out archived entities
+      parsedFilters.meta = { archived: false };
 
       return r.do([
         relatedTable.getAll(ids).filter(parsedFilters).count(),
