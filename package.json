@@ -61,6 +61,8 @@
     "require": [
       "babel-register"
     ],
-    "babel": "inherit"
+    "babel": "inherit",
+    "timeout": "1m",
+    "serial": true
   }
 }
