@@ -6,10 +6,10 @@ import { schemas, initData } from '../fixtures';
 const CLEANUP_DELAY = 500;
 const stop = () => db().stop();
 
-export default (test) => {
+export default (test, data = initData) => {
   let port;
 
-  test.before('initialize', (t) => init(initData)(t).then(p => (port = p)));
+  test.before('initialize', (t) => init(data)(t).then(p => (port = p)));
 
   test.before('should start the seeded singleton', t => (
     redink()

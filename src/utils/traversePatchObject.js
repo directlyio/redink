@@ -43,7 +43,7 @@ export default (patch, schemas) => {
   const archiveArray = [];
 
   keys(patch).forEach(table => {
-    const relationships = getRelationships(table, schemas);
+    const relationships = getRelationships(schemas, table);
     const lookup = patch[table];
 
     keys(lookup).forEach(id =>

@@ -1,4 +1,5 @@
 import r from 'rethinkdb';
+import invalidSchemaType from '../errors/invalidSchemaType';
 
 /**
  * Merges a table object with its relationships.
@@ -58,6 +59,10 @@ import r from 'rethinkdb';
  * @return {Function}
  */
 export default (schemas, type) => record => {
+  if (!schemas.hasOwnProperty(type)) {
+    throw invalidSchemaType(type);
+  }
+
   if (!('relationships' in schemas[type])) return r({});
 
   const { relationships } = schemas[type];

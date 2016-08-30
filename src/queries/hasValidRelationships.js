@@ -1,13 +1,8 @@
 import r from 'rethinkdb';
 
-export default (table, idOrIds) => {
-  /* eslint-disable no-param-reassign */
-  if (!Array.isArray(idOrIds)) {
-    return r.table(table).get(idOrIds);
-  }
-
-  return r.table(table)
-    .getAll(r.args(r(idOrIds)))
+export default (table, ids) => (
+  r.table(table)
+    .getAll(r.args(r(ids)))
     .count()
-    .eq(r(idOrIds).count());
-};
+    .eq(r(ids).count())
+);

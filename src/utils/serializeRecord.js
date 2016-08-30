@@ -1,4 +1,5 @@
 import getRelationships from './getRelationships';
+import invalidSchemaType from '../errors/invalidSchemaType';
 import * as types from '../constants/relationshipTypes';
 
 /**
@@ -61,10 +62,14 @@ import * as types from '../constants/relationshipTypes';
  * @param  {Object} record - The record about to be serialized.
  * @return {Object}
  */
-export default (schemas, schema, record) => {
+export default (schemas, type, record) => {
+  if (!schemas.hasOwnProperty(type)) {
+    throw invalidSchemaType(type);
+  }
+
+  const schema = schemas[type];
+  const { attributes = {}, relationships = {} } = schema;
   const { keys } = Object;
-  const attributes = schema.attributes || {};
-  const relationships = schema.relationships || {};
 
   const serialized = {
     id: record.id,
@@ -73,7 +78,7 @@ export default (schemas, schema, record) => {
   const prepareRelationship = (table) => (relationship) => {
     const parsed = {};
     const blacklistedKeys = ['archived', 'meta'];
-    const relationshipDescription = getRelationships(table, schemas);
+    const relationshipDescription = getRelationships(schemas, table);
 
     keys(relationship).forEach(key => {
       if (blacklistedKeys.includes(key)) return;

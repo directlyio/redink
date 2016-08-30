@@ -2,7 +2,10 @@ import missingNewIds from '../errors/missingNewIds';
 import missingOldIds from '../errors/missingOldIds';
 import missingNewId from '../errors/missingNewId';
 import missingOldId from '../errors/missingOldId';
+import invalidSchemaType from '../errors/invalidSchemaType';
 import * as types from '../constants/relationshipTypes';
+
+const { keys } = Object;
 
 /**
  * Parses `data` and purges data fields that are not present in `schema`.
@@ -92,8 +95,12 @@ import * as types from '../constants/relationshipTypes';
  * @param  {Boolean} isUpdate - Whether this request is an update or not.
  * @return {Object}
  */
-export default (table, schema, data, isUpdate = false) => {
-  const { keys } = Object;
+export default (schemas, type, data, isUpdate = false) => {
+  if (!schemas.hasOwnProperty(type)) {
+    throw invalidSchemaType(type);
+  }
+
+  const schema = schemas[type];
   const attributes = schema.attributes ? keys(schema.attributes) : [];
   const relationships = schema.relationships ? keys(schema.relationships) : [];
   const fields = attributes.concat(relationships);
@@ -118,11 +125,11 @@ export default (table, schema, data, isUpdate = false) => {
 
         if (schema.relationships[relationship].hasOwnProperty(types.HAS_MANY)) {
           if (!data[relationship].old) {
-            throw missingOldIds(table, relationship, id);
+            throw missingOldIds(type, relationship, id);
           }
 
           if (!data[relationship].new) {
-            throw missingNewIds(table, relationship, id);
+            throw missingNewIds(type, relationship, id);
           }
         }
 
@@ -131,11 +138,11 @@ export default (table, schema, data, isUpdate = false) => {
           schema.relationships[relationship].hasOwnProperty(types.HAS_ONE)
         ) {
           if (!data[relationship].old) {
-            throw missingOldId(table, relationship, id);
+            throw missingOldId(type, relationship, id);
           }
 
           if (!data[relationship].new) {
-            throw missingNewId(table, relationship, id);
+            throw missingNewId(type, relationship, id);
           }
         }
 

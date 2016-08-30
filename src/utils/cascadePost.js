@@ -51,7 +51,7 @@ const createPostArray = (entity, field, id) => {
 export default (record, table, connection, schemas) => {
   const postArray = [];
 
-  const relationships = getRelationships(table, schemas);
+  const relationships = getRelationships(schemas, table);
 
   Object.keys(relationships).forEach(relationship => {
     if (record.hasOwnProperty(relationship)) {

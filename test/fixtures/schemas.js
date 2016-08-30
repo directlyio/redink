@@ -42,7 +42,7 @@ export default {
   },
   planet: {
     attributes: {
-      size: true,
+      name: true,
     },
     relationships: {
       inhabitants: {

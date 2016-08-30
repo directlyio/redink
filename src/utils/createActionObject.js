@@ -8,7 +8,7 @@ import { getRelationships } from './';
   * @return {Object}
   */
 const getRelationshipFields = (table, schemas) => {
-  const relationshipObject = getRelationships(table, schemas);
+  const relationshipObject = getRelationships(schemas, table);
   const relationshipFields = Object.keys(relationshipObject);
 
   return {

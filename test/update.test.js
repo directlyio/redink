@@ -6,6 +6,7 @@ import applyHooks from './helpers/applyHooks';
 import { db } from '../src/dbSingleton';
 import { message as missingOldIdsMessage } from '../src/errors/missingOldIds';
 import { message as missingNewIdsMessage } from '../src/errors/missingNewIds';
+import { message as nonExistingRelationshipMessage } from '../src/errors/nonExistingRelationship';
 
 applyHooks(test);
 
@@ -38,6 +39,7 @@ test('should successfully update a user', async t => {
 
     t.deepEqual(user, expected);
   } catch (err) {
+    console.log('err:', err);
     t.fail(err);
   }
 });
@@ -87,7 +89,7 @@ test('should fail to update the user\'s `hasMany` relationship (3)', async t => 
     await db().instance().update('user', '1', update);
     t.fail();
   } catch (err) {
-    t.truthy(err);
+    t.is(err.message, nonExistingRelationshipMessage('user', '1', 'pets'));
   }
 });
 
@@ -97,17 +99,30 @@ test('should fail to update the user\'s `hasOne` relationship', async t => {
       name: 'Benny Franklin',
       company: {
         old: '1',
-        new: '1',
-      },
-      pets: {
-        old: ['1'],
-        new: ['1', '2'],
+        new: '2',
       },
     };
 
     await db().instance().update('user', '1', update);
     t.fail();
   } catch (err) {
-    t.truthy(err);
+    t.is(err.message, nonExistingRelationshipMessage('user', '1', 'company'));
+  }
+});
+
+test('should fail to update the user\'s `belongsTo` relationship', async t => {
+  try {
+    const update = {
+      name: 'Benny Franklin',
+      planet: {
+        old: '1',
+        new: '2',
+      },
+    };
+
+    await db().instance().update('user', '1', update);
+    t.fail();
+  } catch (err) {
+    t.is(err.message, nonExistingRelationshipMessage('user', '1', 'planet'));
   }
 });

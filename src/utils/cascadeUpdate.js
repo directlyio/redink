@@ -52,7 +52,7 @@ const createPostArray = (entity, data, id) => {
 export default (table, id, data, schemas) => {
   const updateArray = [];
 
-  const relationships = getRelationships(table, schemas);
+  const relationships = getRelationships(schemas, table);
 
   Object.keys(relationships).forEach(relationship => {
     if (data.hasOwnProperty(relationship)) {
