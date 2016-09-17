@@ -261,8 +261,6 @@ export default class Redink {
    * });
    * ```
    *
-   * @throws {RedinkDatabaseError} - Chained error message passed to @see reject().
-   *
    * @param {String} type - The table name.
    * @param {String} id - The ID of the record that is going to be fetched.
    * @return {Object}

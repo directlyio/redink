@@ -1,4 +1,3 @@
-import { RedinkUtilError } from 'redink-errors';
 import getRelationships from './getRelationships';
 import postRecordMany from '../queries/postRecordMany';
 import postRecordOne from '../queries/postRecordOne';
@@ -58,7 +57,7 @@ export default (record, table, connection, schemas) => {
       const entity = relationships[relationship];
 
       if (record[relationship] === null) {
-        throw new RedinkUtilError(
+        throw new Error(
           `Cascade post failed: '${relationship}' does not exist but '${table}' was created.`
         );
       }

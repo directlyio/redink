@@ -1,5 +1,3 @@
-process.env.REDINK_DEBUG = true;
-
 import test from 'ava';
 import applyHooks from './helpers/applyHooks';
 import { db } from '../src/dbSingleton';
