@@ -5,7 +5,7 @@ export function db(schemas = {}, name = '', host = '', port = 28015) {
     return {
       instance() {
         if (process.env.REDINK_DEBUG) {
-          console.log(
+          console.log( // eslint-disable-line
             `Accessing Redink\'s singleton, db: ${db.instance.name}, host: ${db.instance.host}, ` +
             `port: ${db.instance.port}.`
           );

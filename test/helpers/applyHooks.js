@@ -4,7 +4,7 @@ import { db } from '../../src/dbSingleton';
 import { schemas, initData } from '../fixtures';
 
 const CLEANUP_DELAY = 500;
-const stop = () => db().stop();
+const stop = () => redink().stop();
 
 export default (test, data = initData) => {
   let port;

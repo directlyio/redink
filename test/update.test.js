@@ -1,5 +1,3 @@
-process.env.BABEL_ENV = 'development';
-
 import test from 'ava';
 import applyHooks from './helpers/applyHooks';
 
