@@ -8,11 +8,13 @@ export const update = (type, id, data) => db().instance().update(type, id, data)
 /* istanbul ignore next */
 export const archive = (type, id) => db().instance().archive(type, id);
 /* istanbul ignore next */
-export const find = (type, filter = {}) => db().instance().find(type, filter);
+export const find = (type, filter = {}, pagination = {}) =>
+  db().instance().find(type, filter, pagination);
 /* istanbul ignore next */
 export const fetch = (type, id) => db().instance().fetch(type, id);
 /* istanbul ignore next */
-export const fetchRelated = (type, id, field) => db().instance().fetchRelated(type, id, field);
+export const fetchRelated = (type, id, field, filter = {}, pagination = {}) =>
+  db().instance().fetchRelated(type, id, field);
 
 export default () => ({
   start({ host, name, schemas, port }) {
