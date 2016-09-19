@@ -1,6 +1,6 @@
 import Redink from './Redink';
 
-export function db(schemas = {}, name = '', host = '', port = 28015) {
+export function db(schemas = {}, name = '', host = '', user = '', password = '', port = 28015) {
   if (db.instance) {
     return {
       instance() {
@@ -22,7 +22,7 @@ export function db(schemas = {}, name = '', host = '', port = 28015) {
 
   return {
     start() {
-      db.instance = new Redink(schemas, name, host, port);
+      db.instance = new Redink(schemas, name, host, user, password, port);
       return db.instance.connect();
     },
 

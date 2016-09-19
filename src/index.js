@@ -17,8 +17,8 @@ export const fetchRelated = (type, id, field, filter = {}, pagination = {}) =>
   db().instance().fetchRelated(type, id, field);
 
 export default () => ({
-  start({ host, name, schemas, port }) {
-    return db(schemas, name, host, port).start();
+  start({ host, name, schemas, port, user, password }) {
+    return db(schemas, name, host, user, password, port).start();
   },
 
   stop() {

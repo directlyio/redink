@@ -19,11 +19,13 @@ import * as types from './constants/relationshipTypes';
 export default class Redink {
   defaultPageLimit = 50
 
-  constructor(schemas = {}, name = '', host = '', port = 28015) {
+  constructor(schemas = {}, name = '', host = '', user = '', password = '', port = 28015) {
     this.schemas = schemas;
     this.name = name;
     this.host = host;
     this.port = port;
+    this.user = user;
+    this.passwor = password;
   }
 
   /**
@@ -33,7 +35,7 @@ export default class Redink {
    * @return {Object} - RethinkDB connection.
    */
   connect() {
-    const { host, name, port } = this;
+    const { host, name, port, user, password } = this;
 
     if (process.env.REDINK_DEBUG) {
       console.log( // eslint-disable-line
@@ -42,7 +44,7 @@ export default class Redink {
     }
 
     return new Promise((resolve, reject) => {
-      r.connect({ host, db: name, port }).then(conn => {
+      r.connect({ host, db: name, port, user, password }).then(conn => {
         this.conn = conn;
         return resolve(conn);
       }).catch(err => reject(err));
