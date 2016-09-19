@@ -25,7 +25,7 @@ export default class Redink {
     this.host = host;
     this.port = port;
     this.user = user;
-    this.passwor = password;
+    this.password = password;
   }
 
   /**
