@@ -128,7 +128,7 @@ export default (schemas, type, record) => {
     const table = hasMany || belongsTo || hasOne;
 
     if (record.hasOwnProperty(relationship)) {
-      if (!record[relationship].archived) {
+      if (record[relationship] && !record[relationship].archived) {
         serialized[relationship] = parseRelationship(table, record[relationship]);
       }
     }
