@@ -1,7 +1,7 @@
+import { forEach } from 'lodash';
 import getRelationships from './getRelationships';
 import postRecordMany from '../queries/postRecordMany';
 import postRecordOne from '../queries/postRecordOne';
-import { forEach } from 'lodash';
 import * as types from '../constants/relationshipTypes';
 
 /**
@@ -53,9 +53,14 @@ export default (record, table, connection, schemas) => {
   const relationships = getRelationships(schemas, table);
 
   Object.keys(relationships).forEach(relationship => {
-    if (record.hasOwnProperty(relationship)) {
-      const entity = relationships[relationship];
+    const entity = relationships[relationship];
 
+    if (
+      record.hasOwnProperty(relationship) &&
+      entity.inverse &&
+      entity.inverseField
+    ) {
+      // FIXME: error message is deprecated
       if (record[relationship] === null) {
         throw new Error(
           `Cascade post failed: '${relationship}' does not exist but '${table}' was created.`

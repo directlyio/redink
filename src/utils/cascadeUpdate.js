@@ -60,9 +60,13 @@ export default (table, id, data, schemas) => {
   const relationships = getRelationships(schemas, table);
 
   Object.keys(relationships).forEach(relationship => {
-    if (data.hasOwnProperty(relationship)) {
-      const entity = relationships[relationship];
+    const entity = relationships[relationship];
 
+    if (
+      data.hasOwnProperty(relationship) &&
+      entity.inverse &&
+      entity.inverseField
+    ) {
       updateArray.push(...createPostArray(entity, data[relationship], id));
     }
   });

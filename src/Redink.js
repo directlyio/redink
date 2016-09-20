@@ -44,7 +44,16 @@ export default class Redink {
     }
 
     return new Promise((resolve, reject) => {
-      r.connect({ host, db: name, port, user, password }).then(conn => {
+      const options = {
+        db: name,
+        host,
+        port,
+      };
+
+      if (user) options.user = user;
+      if (password) options.password = password;
+
+      r.connect(options).then(conn => {
         this.conn = conn;
         return resolve(conn);
       }).catch(err => reject(err));
@@ -94,7 +103,7 @@ export default class Redink {
     const sanitizedData = sanitizeRequest(schemas, type, data);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
     const finalize = (record) => serialize(schemas, type, record);
-    const cascade = postArray => r.do(postArray).run(conn);
+    const cascade = (postArray) => r.do(postArray).run(conn);
     const fetch = ({ generated_keys: keys }) =>
       table
         .get((keys && keys[0]) || data.id)
