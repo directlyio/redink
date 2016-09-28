@@ -229,19 +229,17 @@ export default class Redink {
    *
    * @param {String} type - The table name.
    * @param {(Object|Function)} [fiter={}] - The RethinkDB filter object or function.
-   * @param {(Object)} [pagination={}] - A pagination object with the optional keys `limit` and
-   *                                   `skip`
+   * @param {Boolean} sideload - Determine whether to merge fields or not.
    * @return {Object[]}
    */
-  find(type, filter = {}, pagination = {}) {
+  find(type, filter = {}, sideload = true) {
     if (process.env.REDINK_DEBUG) {
       console.log( // eslint-disable-line
         `Finding a record of type '${type}' at '${this.host}:${this.port}' with db '${this.name}'`
       );
     }
 
-    const { conn, schemas, defaultPageLimit } = this;
-    const { skip, limit } = pagination;
+    const { conn, schemas } = this;
 
     const table = getTable(schemas, type);
     const relationships = getRelationships(schemas, type);
@@ -252,13 +250,13 @@ export default class Redink {
     // filter out archived entities
     parsedFilters.meta = { archived: false };
 
+    const shouldMerge = sideload
+      ? table.filter(parsedFilters).orderBy('id').merge(fieldsToMerge)
+      : table.filter(parsedFilters).orderBy('id');
+
     return r.do([
       table.filter(parsedFilters).count(),
-      table.filter(parsedFilters)
-        .orderBy('id')
-        .skip(skip || 0)
-        .limit(limit || defaultPageLimit)
-        .merge(fieldsToMerge)
+      shouldMerge
         .coerceTo('array'),
     ]).run(conn).then(finalize);
   }
@@ -315,7 +313,7 @@ export default class Redink {
    * @param {String} id - The ID of the record that is going to be fetched.
    * @return {(Object|Object[])}
    */
-  fetchRelated(type, id, field, filter = {}, pagination = {}) {
+  fetchRelated(type, id, field, filter = {}) {
     if (process.env.REDINK_DEBUG) {
       console.log( // eslint-disable-line
         `Fetching '${field}' from a record of type '${type}' with id '${id}' at ` +
@@ -335,8 +333,6 @@ export default class Redink {
       throw invalidRelationshipType(type, field);
     }
 
-    const { defaultPageLimit } = this;
-    const { skip, limit } = pagination;
     const { table: relatedType, original: relationshipType } = relationships[field];
 
     const relatedTable = getTable(schemas, relatedType);
@@ -356,8 +352,6 @@ export default class Redink {
         relatedTable.getAll(ids).filter(parsedFilters).count(),
         relatedTable.getAll(ids).filter(parsedFilters)
           .orderBy('id')
-          .skip(skip || 0)
-          .limit(limit || defaultPageLimit)
           .merge(fieldsToMerge)
           .coerceTo('array'),
       ]).run(conn).then(finalize);

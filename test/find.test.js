@@ -34,6 +34,30 @@ test('should find all users', async t => {
   }
 });
 
+test('should find all users with out sideloading', async t => {
+  try {
+    const users = await db().instance().find('user', {}, false);
+    const expected = [{
+      id: '1',
+      name: 'Ben Franklin',
+      pets: [{
+        id: '1',
+      }],
+      company: {
+        id: '1',
+      },
+      planet: {
+        id: '1',
+      },
+    }];
+
+    expected.count = 1;
+    t.deepEqual(users, expected);
+  } catch (err) {
+    t.fail(err);
+  }
+});
+
 test('should find a user with a filter (1)', async t => {
   try {
     const users = await db().instance().find('user', { name: 'Ben Franklin' });
