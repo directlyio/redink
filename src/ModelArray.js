@@ -92,10 +92,6 @@ class ModelArray {
    * }).then(results => {
    *   const user = results.user; // Resource
    *   const pets = results.pets; // ResourceArray
-   *
-   *   return results.user.put({ pets });
-   * }).then(user => {
-   *   // Resource
    * });
    * ```
    *
@@ -113,7 +109,7 @@ class ModelArray {
       if (typeof fn !== 'function') {
         throw new TypeError(
           'When mapping over a ModelArray, each action must be a function, instead got type ' +
-          `${typeof fn}.`
+          `'${typeof fn}'.`
         );
       }
 

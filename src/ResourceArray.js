@@ -4,7 +4,9 @@ import Resource from './Resource';
 class ResourceArray {
   constructor(conn, schema, records) {
     if (!conn) {
-      throw new TypeError('A valid RethinkDB connection is required to instantiate a Resource.');
+      throw new TypeError(
+        'A valid RethinkDB connection is required to instantiate a ResourceArray.'
+      );
     }
 
     if (!schema) {
@@ -60,6 +62,11 @@ class ResourceArray {
     return Promise.all(this.resources.map(fn));
   }
 
+  /**
+   * Returns an array of plan `Resource` objects.
+   *
+   * @return {Array}
+   */
   toArray() {
     return this.resources.map(resource => resource.toObject());
   }

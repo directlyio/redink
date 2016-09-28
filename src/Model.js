@@ -12,12 +12,16 @@ class Model {
    * @param {Schema} schema
    */
   constructor(conn, type, schema) {
+    if (!conn) {
+      throw new TypeError('A valid RethinkDB connection is required to instantiate a Resource.');
+    }
+
     if (!type) {
-      throw new TypeError('A type is required to instantiate a model.');
+      throw new TypeError('A valid type is required to instantiate a model.');
     }
 
     if (!schema) {
-      throw new TypeError('A schema is required to instantiate a model.');
+      throw new TypeError('A valid schema is required to instantiate a model.');
     }
 
     this.conn = conn;

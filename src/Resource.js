@@ -122,10 +122,20 @@ class Resource {
   archive() {
   }
 
+  /**
+   * Returns true if this is archived.
+   *
+   * @return {Boolean}
+   */
   isArchived() {
     return this.meta.archived;
   }
 
+  /**
+   * Returns a plain object with an `attributes` key, a `relationships` key, and a `meta` key.
+   *
+   * @return {Object}
+   */
   toObject() {
     return {
       attributes: {
