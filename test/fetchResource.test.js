@@ -1,12 +1,12 @@
 import test from 'ava';
 import applyHooks from './helpers/applyHooks';
-import { db } from '../src/dbSingleton';
+import { model } from '../src';
 
 applyHooks(test);
 
 test('should fetch a single user', async t => {
   try {
-    const user = await db().instance().fetch('user', '1');
+    const user = await model('user').fetchResource('1');
     const expected = {
       id: '1',
       name: 'Ben Franklin',
@@ -27,8 +27,13 @@ test('should fetch a single user', async t => {
       },
     };
 
+    console.log(user.relationship('company'));
+    console.log(user.relationship('blogs'));
+    console.log(user.toObject());
+
     t.deepEqual(user, expected);
   } catch (err) {
+    console.log('err:', err);
     t.fail(err);
   }
 });

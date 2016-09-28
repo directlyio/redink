@@ -1,4 +1,4 @@
-export const ANIMAL_TABLE = 'animal';
+export const ADDRESS_TABLE = 'address';
+export const BLOG_TABLE = 'blog';
 export const COMPANY_TABLE = 'company';
-export const PLANET_TABLE = 'planet';
 export const USER_TABLE = 'user';

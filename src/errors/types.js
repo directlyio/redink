@@ -1,4 +1,0 @@
-export const MISSING_NEW_IDS = 'MISSING_NEW_IDS';
-export const MISSING_OLD_IDS = 'MISSING_OLD_IDS';
-export const MISSING_NEW_ID = 'MISSING_NEW_ID';
-export const MISSING_OLD_ID = 'MISSING_OLD_ID';

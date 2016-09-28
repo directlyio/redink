@@ -1,6 +1,6 @@
 {
   "name": "redink",
-  "version": "1.0.0-alpha.8",
+  "version": "2.0.0-alpha.1",
   "description": "RethinkDB ORM",
   "main": "dist/index.js",
   "scripts": {
@@ -21,14 +21,19 @@
     "RethinkDB",
     "ORM"
   ],
-  "author": "CJ Brewer",
-  "license": "ISC",
+  "author": "Dylan Slack",
+  "contributors": [
+    "CJ Brewer",
+    "Eric Bukowski"
+  ],
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/endfire/redink/issues"
   },
   "homepage": "https://github.com/endfire/redink#readme",
   "dependencies": {
     "ava-rethinkdb": "^0.1.3",
+    "bluebird": "^3.4.6",
     "lodash": "^4.13.1",
     "rethinkdb": "^2.3.2"
   },

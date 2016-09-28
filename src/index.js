@@ -1,27 +1,36 @@
-/* eslint-disable no-unused-vars */
-import { db } from './dbSingleton';
+import Redink from './Redink';
 
-/* istanbul ignore next */
-export const create = (type, data) => db().instance().create(type, data);
-/* istanbul ignore next */
-export const update = (type, id, data) => db().instance().update(type, id, data);
-/* istanbul ignore next */
-export const archive = (type, id) => db().instance().archive(type, id);
-/* istanbul ignore next */
-export const find = (type, filter = {}, pagination = {}) =>
-  db().instance().find(type, filter, pagination);
-/* istanbul ignore next */
-export const fetch = (type, id) => db().instance().fetch(type, id);
-/* istanbul ignore next */
-export const fetchRelated = (type, id, field, filter = {}, pagination = {}) =>
-  db().instance().fetchRelated(type, id, field);
+function singleton() {
+  if (singleton.instance) {
+    return {
+      instance() {
+        return singleton.instance;
+      },
 
-export default () => ({
-  start({ host, name, schemas, port, user, password }) {
-    return db(schemas, name, host, user, password, port).start();
-  },
+      disconnect() {
+        return singleton.instance.disconnect();
+      },
+    };
+  }
 
-  stop() {
-    return db().stop();
-  },
-});
+  return {
+    connect(options) {
+      singleton.instance = new Redink(options);
+      return singleton.instance.connect();
+    },
+
+    instance() {
+      throw new Error(
+        'Tried invoking Redink\'s singleton instance without first starting it. This could be ' +
+        'because you tried importing `model` or `registerSchemas` from Redink without creating a ' +
+        'connection. Please try running redink().connect() before invoking any of Redink\'s ' +
+        'methods.'
+      );
+    },
+  };
+}
+
+export const registerSchemas = (...args) => singleton().instance().registerSchemas(...args);
+export const model = (...args) => singleton().instance().model(...args);
+
+export default singleton;

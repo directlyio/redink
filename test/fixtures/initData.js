@@ -2,10 +2,39 @@ import * as types from './entityTypes';
 
 export default {
   test: {
-    [types.ANIMAL_TABLE]: [{
+    [types.USER_TABLE]: [{
       id: '1',
-      species: 'Dog',
-      owner: {
+      name: 'Bob',
+      friends: [{
+        id: '2',
+        archived: false,
+      }],
+      blogs: [{
+        id: '1',
+        archived: false,
+      }],
+      company: {
+        id: '1',
+        archived: false,
+      },
+      meta: {
+        archived: false,
+      },
+    }, {
+      id: '2',
+      name: 'Billy',
+      friends: [{
+        id: '1',
+        archived: false,
+      }],
+      meta: {
+        archived: false,
+      },
+    }],
+    [types.BLOG_TABLE]: [{
+      id: '1',
+      title: 'How to Blog',
+      author: {
         id: '1',
         archived: false,
       },
@@ -15,38 +44,23 @@ export default {
     }],
     [types.COMPANY_TABLE]: [{
       id: '1',
-      name: 'Directly, Inc.',
+      name: 'Apple',
       employees: [{
         id: '1',
         archived: false,
       }],
+      address: {
+        id: '1',
+        archived: false,
+      },
       meta: {
         archived: false,
       },
     }],
-    [types.PLANET_TABLE]: [{
+    [types.ADDRESS_TABLE]: [{
       id: '1',
-      name: 'Earth',
-      inhabitants: [{
-        id: '1',
-        archived: false,
-      }],
-      meta: {
-        archived: false,
-      },
-    }],
-    [types.USER_TABLE]: [{
-      id: '1',
-      name: 'Ben Franklin',
-      pets: [{
-        id: '1',
-        archived: false,
-      }],
+      city: 'Denver',
       company: {
-        id: '1',
-        archived: false,
-      },
-      planet: {
         id: '1',
         archived: false,
       },

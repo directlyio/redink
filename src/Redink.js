@@ -1,374 +1,176 @@
 import r from 'rethinkdb';
+import Promise from 'bluebird';
+import Model from './Model';
+import ModelArray from './ModelArray';
+import { destructureAlias, hydrateInverse } from './utils';
 
-import invalidRelationshipType from './errors/invalidRelationshipType';
+const DEFAULT_RETHINKDB_PORT = 28015;
 
-import cascadeArchive from './utils/cascadeArchive';
-import cascadePost from './utils/cascadePost';
-import cascadeUpdate from './utils/cascadeUpdate';
-import getFieldsToMerge from './utils/getFieldsToMerge';
-import getRelationships from './utils/getRelationships';
-import getTable from './utils/getTable';
-import hasExistingRelationships from './utils/hasExistingRelationships';
-import sanitizeRequest from './utils/sanitizeRequest';
-import serialize from './utils/serialize';
-import parseFilters from './utils/parseFilters';
-import requestHasValidRelationships from './utils/requestHasValidRelationships';
-
-import * as types from './constants/relationshipTypes';
-
-export default class Redink {
-  defaultPageLimit = 50
-
-  constructor(schemas = {}, name = '', host = '', user = '', password = '', port = 28015) {
-    this.schemas = schemas;
-    this.name = name;
+class Redink {
+  constructor({
+    db = '',
+    host = '',
+    user = '',
+    password = '',
+    port = DEFAULT_RETHINKDB_PORT,
+  }) {
+    this.db = db;
     this.host = host;
-    this.port = port;
     this.user = user;
     this.password = password;
+    this.port = port;
+
+    this.models = {};
   }
 
   /**
-   * Connect to a RethinkDB database.
-   * Requires host and name to be defined or will reject the promise.
+   * Connects to the RethinkDB database.
    *
-   * @return {Object} - RethinkDB connection.
+   * @async
+   * @return {Promise}
    */
   connect() {
-    const { host, name, port, user, password } = this;
+    const options = {
+      db: this.db,
+      host: this.host,
+      port: this.port,
+    };
 
-    if (process.env.REDINK_DEBUG) {
-      console.log( // eslint-disable-line
-        `Connect to RethinkDB at '${this.host}:${this.port}' with db '${this.name}'`
-      );
-    }
+    if (this.user) options.user = this.user;
+    if (this.password) options.password = this.password;
 
-    return new Promise((resolve, reject) => {
-      const options = {
-        db: name,
-        host,
-        port,
-      };
-
-      if (user) options.user = user;
-      if (password) options.password = password;
-
-      r.connect(options).then(conn => {
-        this.conn = conn;
-        return resolve(conn);
-      }).catch(err => reject(err));
-    });
+    return r.connect(options).then(conn => (this.conn = conn));
   }
 
+  /**
+   * Disconnects from the RethinkDB database.
+   *
+   * @async
+   * @return {Promise}
+   */
   disconnect() {
-    if (process.env.REDINK_DEBUG) {
-      console.log( // eslint-disable-line
-        `Disconnecting from RethinkDB at '${this.host}:${this.port}' with db '${this.name}'`
-      );
+    if (!this.conn) {
+      throw new Error('Tried disconnecting a Redink instance that was never connected.');
     }
 
     return this.conn.close();
   }
 
   /**
-   * Creates a new record inside of table `type` with attributes and relationships specified in
-   * `data`.
+   * Registers Redink schemas. In other words, this completes the schema graph by hydrating inverse
+   * relationships where necessary. After finishing the graph, it ensures that all proper tables are
+   * created with each schema `type` as the table name.
    *
-   * ```js
-   * db.create('user', {
-   *   name: 'Dylan',
-   *   email: 'dylanslack@gmail.com',
-   *   pets: [1, 2],
-   *   company: 1,
-   * }).then(user => {
-   *   // inserted object
-   * });
-   * ```
+   * @param {Object} schemas - Redink schemas.
+   * @return {Promise}
    *
-   * @param {String} type - The table name.
-   * @param {Object} data - Flattened JSON representing attributes and relationships.
-   * @return {Object}
+   * @todo Create indices where necessary.
    */
-  create(type, data) {
-    if (process.env.REDINK_DEBUG) {
-      console.log( // eslint-disable-line
-        `Creating a record of type '${type}' at '${this.host}:${this.port}' with db '${this.name}'`
-      );
-    }
+  registerSchemas(schemas) {
+    const { keys } = Object;
+    const { conn, db } = this;
+    const types = [];
 
-    const { conn, schemas } = this;
-    const table = getTable(schemas, type);
-    let returnId;
+    const newSchemas = { ...schemas };
 
-    const sanitizedData = sanitizeRequest(schemas, type, data);
-    const fieldsToMerge = getFieldsToMerge(schemas, type);
-    const finalize = (record) => serialize(schemas, type, record);
-    const cascade = (postArray) => r.do(postArray).run(conn);
-    const fetch = ({ generated_keys: keys }) =>
-      table
-        .get((keys && keys[0]) || data.id)
-        .merge(fieldsToMerge)
-        .run(conn);
+    // invoke all relationship functions, i.e. all 'hasMany', 'hasOne', and 'belongsTo' functions
+    keys(schemas).forEach(schema => {
+      const { relationships } = schemas[schema];
 
-    const handleRecord = record => {
-      returnId = record.id;
-      return cascadePost(record, type, conn, schemas);
-    };
+      keys(relationships).forEach(field => {
+        if (typeof relationships[field] !== 'function') {
+          throw new TypeError(
+            `Tried registering the '${schema}' schema's '${field}' relationship, but it wasn't a ` +
+            'function. Please use \'hasMany\', \'belongsTo\', or \'hasOne\' from ' +
+            '\'redink/schema\'.'
+          );
+        }
 
-    const handleReturnFetch = () => fetch({
-      generated_keys: [returnId],
+        newSchemas[schema].relationships[field] = relationships[field](field);
+      });
     });
 
-    return table
-      .insert(sanitizedData)
-      .run(conn)
-      .then(fetch)
-      .then(handleRecord)
-      .then(cascade)
-      .then(handleReturnFetch)
-      .then(finalize);
+    // hydrate inverse relationships of the newly created schemas object
+    keys(newSchemas).forEach(schema => {
+      const { relationships } = schemas[schema];
+
+      keys(relationships).forEach(field => {
+        const { type } = relationships[field];
+        hydrateInverse(schemas, type);
+
+        if (!types.includes(type)) types.push(type);
+      });
+    });
+
+    this.schemas = newSchemas;
+
+    // create missing tables
+    return r.db(db).tableList().run(conn)
+
+      // compute difference between available tables and schema types and create them
+      .then(tables => {
+        const missingTables = types.filter(type => !tables.includes(type));
+
+        return Promise.all(
+          missingTables.map(table => r.tableCreate(table).run(conn))
+        );
+      })
+
+      // register the Models
+      .then(() => {
+        types.forEach(type => {
+          this.models[type] = new Model(conn, type, newSchemas[type]);
+        });
+
+        return this.models;
+      });
   }
 
   /**
-   * Updates the record with id `id` in table `type` with data `data`.
+   * Returns a `Model` or `ModelArray` instance with the matching type(s) from Redink's model
+   * registry. Any string in `types` after a colon is interpreted as an alias.
    *
    * ```js
-   * db.update('user', 10, {
-   *   name: 'Dy-lon',
-   *   pets: [1, 2, 3],
-   * }).then(user => {
-   *   // updated object
-   * });
+   * const model = app.model('user');
+   * const modelArray = app.model('user', 'animal:pets');
    * ```
    *
-   * @param {String} type - The table name.
-   * @param {String)} id - The ID of the record that is going to be updated.
-   * @param {Object} data - Flattened JSON representing attributes and relationships.
-   * @return {Object}
+   * @param {...String} types
+   * @returns {Model|ModelArray}
    */
-  update(type, id, data) {
-    if (process.env.REDINK_DEBUG) {
-      console.log( // eslint-disable-line
-        `Updating a record of type '${type}' with id '${id}' at '${this.host}:${this.port}' with ` +
-        `db '${this.name}'.`
+  model(...types) {
+    if (types.length === 0) {
+      throw new TypeError(
+        'A defined type is required to access a Model instance.'
       );
     }
 
-    /* eslint-disable no-param-reassign */
-    id = `${id}`;
-    const { conn, schemas } = this;
-    const table = getTable(schemas, type);
-    const sanitized = sanitizeRequest(schemas, type, data, id);
-    const hasValidRelationships = requestHasValidRelationships(schemas, type, data, true);
-    const fieldsToMerge = getFieldsToMerge(schemas, type);
+    if (types.length === 1) {
+      const model = this.models[types[0]];
 
-    const checkRelationships = (relationships) => hasExistingRelationships(type, id, relationships);
-    const updateRecord = () => table.get(id).update(sanitized).run(conn);
-    const updateArray = () => cascadeUpdate(type, id, data, schemas);
-    const cascade = () => r.do(updateArray).run(conn);
-    const fetch = () => table.get(id).merge(fieldsToMerge).run(conn);
-    const finalize = (record) => serialize(schemas, type, record);
+      if (!model) {
+        throw new Error(
+          `Tried accessing a model with type '${types[0]}', but no such model was ever registered.`
+        );
+      }
 
-    return hasValidRelationships
-      .run(conn)
-      .then(checkRelationships)
-      .then(updateRecord)
-      .then(cascade)
-      .then(fetch)
-      .then(finalize);
-  }
-
-  /**
-   * Archives the record with id `id` from the table `type`.
-   *
-   * ```js
-   * db.delete('user', 10).then(success => {
-   *   // true or false
-   * });
-   * ```
-   *
-   * @param {String} type - The table name.
-   * @param {String} id - The ID of the record that is going to be deleted.
-   * @return {Boolean}
-   */
-  archive(type, id) {
-    if (process.env.REDINK_DEBUG) {
-      console.log( // eslint-disable-line
-        `Archiving a record of type '${type}' with id ${id} at '${this.host}:${this.port}' with ` +
-        `db '${this.name}'.`
-      );
+      return model;
     }
 
-    /* eslint-disable no-param-reassign */
-    id = `${id}`;
-    const { conn, schemas } = this;
-    const table = getTable(schemas, type);
-    const query = cascadeArchive(id, type, conn, schemas);
+    const models = types.reduce((prev, type) => {
+      const { model, alias } = destructureAlias(type);
 
-    const fieldsToMerge = getFieldsToMerge(schemas, type);
-    const fetch = () => table.get(id).merge(fieldsToMerge).run(conn);
-    const runArchiveArray = (archiveArray) => r.do(archiveArray).run(conn);
-    const finalize = (record) => serialize(schemas, type, record);
+      return {
+        ...prev,
+        [type]: {
+          model: this.models[model],
+          alias,
+        },
+      };
+    }, {});
 
-    return query
-      .then(runArchiveArray)
-      .then(fetch)
-      .then(finalize);
-  }
-
-  /**
-   * Finds all records from the table `type` that match `filter`.
-   *
-   * ```js
-   * db.find('user', {
-   *   name: 'Dylan',
-   * }).then(users => {
-   *   // all users with name 'Dylan'
-   * });
-   * ```
-   *
-   * @param {String} type - The table name.
-   * @param {(Object|Function)} [fiter={}] - The RethinkDB filter object or function.
-   * @param {(Object)} [pagination={}] - A pagination object with the optional keys `limit` and
-   *                                   `skip`
-   * @return {Object[]}
-   */
-  find(type, filter = {}, pagination = {}) {
-    if (process.env.REDINK_DEBUG) {
-      console.log( // eslint-disable-line
-        `Finding a record of type '${type}' at '${this.host}:${this.port}' with db '${this.name}'`
-      );
-    }
-
-    const { conn, schemas, defaultPageLimit } = this;
-    const { skip, limit } = pagination;
-
-    const table = getTable(schemas, type);
-    const relationships = getRelationships(schemas, type);
-    const fieldsToMerge = getFieldsToMerge(schemas, type);
-    const parsedFilters = parseFilters(filter, relationships);
-    const finalize = ([count, records]) => serialize(schemas, type, records, count);
-
-    // filter out archived entities
-    parsedFilters.meta = { archived: false };
-
-    return r.do([
-      table.filter(parsedFilters).count(),
-      table.filter(parsedFilters)
-        .orderBy('id')
-        .skip(skip || 0)
-        .limit(limit || defaultPageLimit)
-        .merge(fieldsToMerge)
-        .coerceTo('array'),
-    ]).run(conn).then(finalize);
-  }
-
-  /**
-   * Fetches a single record from table `table` with id `id`.
-   *
-   * ```js
-   * db.fetch('user', 10).then(user => {
-   *   // fetched object
-   * });
-   * ```
-   *
-   * @param {String} type - The table name.
-   * @param {String} id - The ID of the record that is going to be fetched.
-   * @return {Object}
-   */
-  fetch(type, id) {
-    if (process.env.REDINK_DEBUG) {
-      console.log( // eslint-disable-line
-        `Fetching a record of type '${type}' with id '${id}' at '${this.host}:${this.port}' with ` +
-        `db '${this.name}'.`
-      );
-    }
-
-    /* eslint-disable no-param-reassign */
-    id = `${id}`;
-    const { conn, schemas } = this;
-    const table = r.table(type);
-    const fieldsToMerge = getFieldsToMerge(schemas, type);
-    const finalize = (record) => serialize(schemas, type, record);
-
-    return table
-      .get(id)
-      .merge(fieldsToMerge)
-      .run(conn)
-      .then(finalize);
-  }
-
-  /**
-   * Fetches the `field` relationship from the record with id `id` from the table `type`.
-   *
-   * ```js
-   * db.fetchRelated('user', 10, 'pets').then(pets => {
-   *   // all the pets
-   * });
-   *
-   * db.fetchRelated('user', 10, 'company').then(company => {
-   *   // company
-   * });
-   * ```
-   *
-   * @param {String} type - The table name.
-   * @param {String} id - The ID of the record that is going to be fetched.
-   * @return {(Object|Object[])}
-   */
-  fetchRelated(type, id, field, filter = {}, pagination = {}) {
-    if (process.env.REDINK_DEBUG) {
-      console.log( // eslint-disable-line
-        `Fetching '${field}' from a record of type '${type}' with id '${id}' at ` +
-        `'${this.host}:${this.port}' with db '${this.name}'.`
-      );
-    }
-
-    /* eslint-disable no-param-reassign */
-    id = `${id}`;
-    const { conn, schemas } = this;
-
-    const parentTable = getTable(schemas, type);
-    const relationships = getRelationships(schemas, type);
-    const parsedFilters = parseFilters(filter, relationships);
-
-    if (!relationships.hasOwnProperty(field)) {
-      throw invalidRelationshipType(type, field);
-    }
-
-    const { defaultPageLimit } = this;
-    const { skip, limit } = pagination;
-    const { table: relatedType, original: relationshipType } = relationships[field];
-
-    const relatedTable = getTable(schemas, relatedType);
-    const fieldsToMerge = getFieldsToMerge(schemas, relatedType);
-
-    if (relationshipType === types.HAS_MANY) {
-      const finalize = ([count, records]) => serialize(schemas, relatedType, records, count);
-
-      const ids = r.args(
-        parentTable.get(id)(field).filter(rel => r.not(rel('archived')))('id')
-      );
-
-      // filter out archived entities
-      parsedFilters.meta = { archived: false };
-
-      return r.do([
-        relatedTable.getAll(ids).filter(parsedFilters).count(),
-        relatedTable.getAll(ids).filter(parsedFilters)
-          .orderBy('id')
-          .skip(skip || 0)
-          .limit(limit || defaultPageLimit)
-          .merge(fieldsToMerge)
-          .coerceTo('array'),
-      ]).run(conn).then(finalize);
-    }
-
-    const finalize = (record) => serialize(schemas, relatedType, record);
-
-    return relatedTable
-      .get(parentTable.get(id)(field)('id'))
-      .merge(fieldsToMerge)
-      .run(conn)
-      .then(finalize);
+    return new ModelArray(models);
   }
 }
+
+export default Redink;
