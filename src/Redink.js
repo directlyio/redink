@@ -12,6 +12,7 @@ import hasExistingRelationships from './utils/hasExistingRelationships';
 import sanitizeRequest from './utils/sanitizeRequest';
 import serialize from './utils/serialize';
 import parseFilters from './utils/parseFilters';
+import filterLike from './utils/filterLike';
 import requestHasValidRelationships from './utils/requestHasValidRelationships';
 
 import * as types from './constants/relationshipTypes';
@@ -245,20 +246,25 @@ export default class Redink {
     const relationships = getRelationships(schemas, type);
     const fieldsToMerge = getFieldsToMerge(schemas, type);
     const parsedFilters = parseFilters(filter, relationships);
-    const finalize = ([count, records]) => serialize(schemas, type, records, count);
+    const finalize = (records) => serialize(schemas, type, records);
 
     // filter out archived entities
     parsedFilters.meta = { archived: false };
 
-    const shouldMerge = sideload
-      ? table.filter(parsedFilters).orderBy('id').merge(fieldsToMerge)
-      : table.filter(parsedFilters).orderBy('id');
+    const search = filterLike(parsedFilters);
 
-    return r.do([
-      table.filter(parsedFilters).count(),
-      shouldMerge
-        .coerceTo('array'),
-    ]).run(conn).then(finalize);
+    const tableQuery = table
+      .filter(search || parsedFilters)
+      .orderBy('id');
+
+    const shouldMerge = sideload
+      ? tableQuery.merge(fieldsToMerge)
+      : tableQuery.orderBy('id');
+
+    return shouldMerge
+      .coerceTo('array')
+      .run(conn)
+      .then(finalize);
   }
 
   /**
@@ -339,7 +345,7 @@ export default class Redink {
     const fieldsToMerge = getFieldsToMerge(schemas, relatedType);
 
     if (relationshipType === types.HAS_MANY) {
-      const finalize = ([count, records]) => serialize(schemas, relatedType, records, count);
+      const finalize = (records) => serialize(schemas, relatedType, records);
 
       const ids = r.args(
         parentTable.get(id)(field).filter(rel => r.not(rel('archived')))('id')
@@ -348,13 +354,12 @@ export default class Redink {
       // filter out archived entities
       parsedFilters.meta = { archived: false };
 
-      return r.do([
-        relatedTable.getAll(ids).filter(parsedFilters).count(),
-        relatedTable.getAll(ids).filter(parsedFilters)
-          .orderBy('id')
-          .merge(fieldsToMerge)
-          .coerceTo('array'),
-      ]).run(conn).then(finalize);
+      return relatedTable.getAll(ids).filter(parsedFilters)
+        .orderBy('id')
+        .merge(fieldsToMerge)
+        .coerceTo('array')
+        .run(conn)
+        .then(finalize);
     }
 
     const finalize = (record) => serialize(schemas, relatedType, record);

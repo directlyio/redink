@@ -27,7 +27,6 @@ test('should find all users', async t => {
       },
     }];
 
-    expected.count = 1;
     t.deepEqual(users, expected);
   } catch (err) {
     t.fail(err);
@@ -51,7 +50,6 @@ test('should find all users with out sideloading', async t => {
       },
     }];
 
-    expected.count = 1;
     t.deepEqual(users, expected);
   } catch (err) {
     t.fail(err);
@@ -60,7 +58,7 @@ test('should find all users with out sideloading', async t => {
 
 test('should find a user with a filter (1)', async t => {
   try {
-    const users = await db().instance().find('user', { name: 'Ben Franklin' });
+    const users = await db().instance().find('user', { name: 'B' });
     const expected = [{
       id: '1',
       name: 'Ben Franklin',
@@ -81,7 +79,6 @@ test('should find a user with a filter (1)', async t => {
       },
     }];
 
-    expected.count = 1;
     t.deepEqual(users, expected);
   } catch (err) {
     t.fail(err);
@@ -111,7 +108,6 @@ test('should find a user with a filter (2)', async t => {
       },
     }];
 
-    expected.count = 1;
     t.deepEqual(users, expected);
   } catch (err) {
     t.fail(err);
@@ -122,7 +118,6 @@ test('should find a user with a filter (3)', async t => {
   try {
     const users = await db().instance().find('user', { name: 'George Washington' });
     const expected = [];
-    expected.count = 0;
     t.deepEqual(users, expected);
   } catch (err) {
     t.fail(err);

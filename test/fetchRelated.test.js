@@ -62,7 +62,6 @@ test('should find the user\'s `hasMany` relationship', async t => {
       },
     }];
 
-    expected.count = 1;
     t.deepEqual(pets, expected);
   } catch (err) {
     t.fail(err);
@@ -87,7 +86,6 @@ test('should find the user\'s `hasMany` relationship with a filter (1)', async t
       },
     }];
 
-    expected.count = 1;
     t.deepEqual(pets, expected);
   } catch (err) {
     t.fail(err);
@@ -102,7 +100,6 @@ test('should find the user\'s `hasMany` relationship with a filter (2)', async t
 
     const expected = [];
 
-    expected.count = 0;
     t.deepEqual(pets, expected);
   } catch (err) {
     t.fail(err);
