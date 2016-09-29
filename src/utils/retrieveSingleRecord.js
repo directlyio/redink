@@ -3,11 +3,9 @@ export default (table, id, options) => {
   table = table.get(id);
 
   if ('pluck' in options) {
+    // always pluck the id
+    options.pluck.id = true;
     table = table.pluck(options.pluck);
-  }
-
-  if ('include' in options) {
-    table = table.merge(options.include);
   }
 
   return table;

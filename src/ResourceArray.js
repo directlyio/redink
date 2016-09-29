@@ -81,6 +81,15 @@ export default class ResourceArray {
   }
 
   /**
+   * Returns the number of resources.
+   *
+   * @return {Number}
+   */
+  size() {
+    return this.resources.length;
+  }
+
+  /**
    * Returns an array of plan `Resource` objects.
    *
    * @return {Array}

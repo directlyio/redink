@@ -54,7 +54,7 @@ export default class Resource {
   }
 
   /**
-   * Returns an attribute of the resource.
+   * Returns an attribute.
    *
    * ```
    * app.model('user').fetchResource('1').then(user => {
@@ -67,6 +67,15 @@ export default class Resource {
    */
   attribute(attribute) {
     return this.attributes[attribute];
+  }
+
+  /**
+   * Returns all the attributes.
+   *
+   * @return {Object}
+   */
+  attributes() {
+    return this.attributes;
   }
 
   /**
@@ -114,6 +123,15 @@ export default class Resource {
    */
   relationship(relationship) {
     return this.relationships[relationship];
+  }
+
+  /**
+   * Returns all the relationships.
+   *
+   * @return {Object}
+   */
+  relationships() {
+    return this.relationships;
   }
 
   /**

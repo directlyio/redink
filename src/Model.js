@@ -1,7 +1,12 @@
 import r from 'rethinkdb';
 import Resource from './Resource';
 import ResourceArray from './ResourceArray';
-import { retrieveManyRecords, retrieveSingleRecord } from './utils';
+
+import {
+  mergeRelationships,
+  retrieveManyRecords,
+  retrieveSingleRecord,
+} from './utils';
 
 export default class Model {
   /**
@@ -49,9 +54,12 @@ export default class Model {
     const { conn, schema } = this;
     const { type } = schema;
 
-    const table = r.table(type);
+    let table = r.table(type);
 
-    return retrieveManyRecords(table, options).run(conn)
+    table = retrieveManyRecords(table, options);
+    table = mergeRelationships(table, schema, options);
+
+    return table.run(conn)
       .then(records => new ResourceArray(conn, schema, records));
   }
 
@@ -125,9 +133,12 @@ export default class Model {
    */
   fetchResource(id, options = {}) {
     const { conn, schema } = this;
-    const table = r.table(schema.type);
+    let table = r.table(schema.type);
 
-    return retrieveSingleRecord(table, id, options).run(conn)
+    table = retrieveSingleRecord(table, id, options);
+    table = mergeRelationships(table, schema, options);
+
+    return table.run(conn)
       .then(record => new Resource(conn, schema, record));
   }
 

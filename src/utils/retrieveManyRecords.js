@@ -5,11 +5,13 @@ export default (table, options) => {
   }
 
   if ('pluck' in options) {
+    // always pluck the id
+    options.pluck.id = true;
     table = table.pluck(options.pluck);
   }
 
-  if ('include' in options) {
-    table = table.merge(options.include);
+  if ('between' in options) {
+    table = table.between(options.between);
   }
 
   table = table.coerceTo('array');
