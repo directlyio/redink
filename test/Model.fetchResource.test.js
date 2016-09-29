@@ -1,4 +1,5 @@
 import test from 'ava';
+import Resource from '../src/Resource';
 import applyHooks from './helpers/applyHooks';
 import { model } from '../src';
 
@@ -8,6 +9,7 @@ test('should fetch a single user', async t => {
   try {
     const user = await model('user').fetchResource('1');
 
+    t.truthy(user instanceof Resource);
     t.is(user.id, '1');
   } catch (err) {
     t.fail(err);
@@ -20,6 +22,7 @@ test('should fetch a single user with some sideloaded relationships', async t =>
       include: { friends: true, company: true },
     });
 
+    t.truthy(user instanceof Resource);
     t.is(user.id, '1');
     t.is(user.relationship('friends').records[0].name, 'Billy');
     t.is(user.relationship('company').record.name, 'Apple');

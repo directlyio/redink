@@ -108,12 +108,17 @@ export default class Model {
 
     if (relation === 'hasMany') {
       relatedTable = relatedTable.getAll(r.args(ids));
+      relatedTable = retrieveManyRecords(relatedTable, options);
+      relatedTable = mergeRelationships(relatedTable, schema, options);
 
-      return retrieveManyRecords(relatedTable, options).run(conn)
+      return relatedTable.run(conn)
         .then(records => new ResourceArray(conn, schema, records));
     }
 
-    return retrieveSingleRecord(relatedTable, id, options).run(conn)
+    relatedTable = retrieveSingleRecord(relatedTable, id, options);
+    relatedTable = mergeRelationships(relatedTable, schema, options);
+
+    return relatedTable.run(conn)
       .then(record => new Resource(conn, schema, record));
   }
 

@@ -1,4 +1,3 @@
-import Promise from 'bluebird';
 import Resource from './Resource';
 
 export default class ResourceArray {
@@ -56,10 +55,10 @@ export default class ResourceArray {
    * ```
    *
    * @param {Function} fn
-   * @return {Promise}
+   * @return {Array}
    */
   map(fn) {
-    return Promise.all(this.resources.map(fn));
+    return this.resources.map(fn);
   }
 
   /**
@@ -68,16 +67,13 @@ export default class ResourceArray {
    * ```
    * app.model('user').findRelated('1', 'pets').then(pets => {
    *   return pets.each(pet => pet.archive());
-   * }).then(newPets => {
-   *   // ResourceArray
    * });
    * ```
    *
    * @param {Function} fn
-   * @return {Promise}
    */
   each(fn) {
-    return Promise.all(this.resources.forEach(fn));
+    this.resources.forEach(fn);
   }
 
   /**
