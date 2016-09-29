@@ -55,11 +55,29 @@ export default class ResourceArray {
    * });
    * ```
    *
-   * @param  {Function} fn [description]
-   * @return {[type]}      [description]
+   * @param {Function} fn
+   * @return {Promise}
    */
   map(fn) {
     return Promise.all(this.resources.map(fn));
+  }
+
+  /**
+   * Invokes `fn` with each individual `resource` as the argument.
+   *
+   * ```
+   * app.model('user').findRelated('1', 'pets').then(pets => {
+   *   return pets.each(pet => pet.archive());
+   * }).then(newPets => {
+   *   // ResourceArray
+   * });
+   * ```
+   *
+   * @param {Function} fn
+   * @return {Promise}
+   */
+  each(fn) {
+    return Promise.all(this.resources.forEach(fn));
   }
 
   /**
