@@ -1,6 +1,6 @@
 import r from 'rethinkdb';
+import ResourceArray from './ResourceArray';
 import { retrieveManyRecords, retrieveSingleRecord } from './utils';
-import { createResourceArray } from './ResourceArray';
 
 export default class Resource {
   /**
@@ -146,17 +146,15 @@ export default class Resource {
     if (relation === 'hasMany') {
       table = table.getAll(r.args(relatedRecords.map(record => record.id)));
 
-      return retrieveManyRecords(table, options)
-        .run(conn)
-        .then(records => createResourceArray(conn, schema, records));
+      return retrieveManyRecords(table, options).run(conn)
+        .then(records => new ResourceArray(conn, schema, records));
     }
 
-    return retrieveSingleRecord(table, relatedRecord.id, options)
-      .run(conn)
+    return retrieveSingleRecord(table, relatedRecord.id, options).run(conn)
       .then(record => new Resource(conn, schema, record));
   }
 
-  update(record) {
+  update(updates) {
   }
 
   archive() {
@@ -191,5 +189,3 @@ export default class Resource {
     };
   }
 }
-
-export const createResource = (...args) => new Resource(...args);

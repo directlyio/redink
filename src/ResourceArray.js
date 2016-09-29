@@ -71,5 +71,3 @@ export default class ResourceArray {
     return this.resources.map(resource => resource.toObject());
   }
 }
-
-export const createResourceArray = (...args) => new ResourceArray(...args);

@@ -1,7 +1,7 @@
 import r from 'rethinkdb';
+import Resource from './Resource';
+import ResourceArray from './ResourceArray';
 import { retrieveManyRecords, retrieveSingleRecord } from './utils';
-import { createResource } from './Resource';
-import { createResourceArray } from './ResourceArray';
 
 export default class Model {
   /**
@@ -51,9 +51,8 @@ export default class Model {
 
     const table = r.table(type);
 
-    return retrieveManyRecords(table, options)
-      .run(conn)
-      .then(records => createResourceArray(conn, schema, records));
+    return retrieveManyRecords(table, options).run(conn)
+      .then(records => new ResourceArray(conn, schema, records));
   }
 
   /**
@@ -102,14 +101,12 @@ export default class Model {
     if (relation === 'hasMany') {
       relatedTable = relatedTable.getAll(r.args(ids));
 
-      return retrieveManyRecords(relatedTable, options)
-        .run(conn)
-        .then(records => createResourceArray(conn, schema, records));
+      return retrieveManyRecords(relatedTable, options).run(conn)
+        .then(records => new ResourceArray(conn, schema, records));
     }
 
-    return retrieveSingleRecord(relatedTable, id, options)
-      .run(conn)
-      .then(record => createResource(conn, schema, record));
+    return retrieveSingleRecord(relatedTable, id, options).run(conn)
+      .then(record => new Resource(conn, schema, record));
   }
 
   /**
@@ -130,9 +127,8 @@ export default class Model {
     const { conn, schema } = this;
     const table = r.table(schema.type);
 
-    return retrieveSingleRecord(table, id, options)
-      .run(conn)
-      .then(record => createResource(conn, schema, record));
+    return retrieveSingleRecord(table, id, options).run(conn)
+      .then(record => new Resource(conn, schema, record));
   }
 
   /**
@@ -165,9 +161,7 @@ export default class Model {
     let createdRecordId;
     let createdResource;
 
-    return r.table(type)
-      .insert(record)
-      .run(conn)
+    return r.table(type).insert(record).run(conn)
 
       // retrieve the record that was just created
       .then(({ generated_keys: keys }) => {
@@ -177,7 +171,7 @@ export default class Model {
 
       // create the resource and sync its relationships
       .then(createdRecord => {
-        createdResource = createResource(conn, schema, createdRecord);
+        createdResource = new Resource(conn, schema, createdRecord);
         return createdResource.syncRelationships();
       })
 
@@ -210,8 +204,7 @@ export default class Model {
 
     let updatedResource;
 
-    return r.table(type).get(id)
-      .update(updates)
+    return r.table(type).get(id).update(updates)
       .run(conn)
 
       // retrieve the record that was just created
@@ -219,7 +212,7 @@ export default class Model {
 
       // create the resource
       .then(record => {
-        updatedResource = createResource(schema, record);
+        updatedResource = new Resource(schema, record);
         return updatedResource;
       })
 
@@ -259,7 +252,7 @@ export default class Model {
 
       // create the resource
       .then(record => {
-        archivedResource = createResource(schema, record);
+        archivedResource = new Resource(schema, record);
         return archivedResource;
       })
 
@@ -270,5 +263,3 @@ export default class Model {
       .then(() => archivedResource);
   }
 }
-
-export const createModel = (...args) => new Model(...args);

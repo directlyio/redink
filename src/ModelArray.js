@@ -116,7 +116,7 @@ export default class ModelArray {
       let model;
 
       if (this.hasModel(action)) {
-        model = models[action];
+        model = models[action].model;
       } else if (this.hasModelByAlias(action)) {
         model = this.getModelByAlias(action);
       }
@@ -129,5 +129,3 @@ export default class ModelArray {
     return Promise.props(execute);
   }
 }
-
-export const createModelArray = (...args) => new ModelArray(...args);
