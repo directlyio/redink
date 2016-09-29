@@ -7,28 +7,28 @@ export default {
       name: 'Bob',
       friends: [{
         id: '2',
-        archived: false,
+        _archived: false,
       }],
       blogs: [{
         id: '1',
-        archived: false,
+        _archived: false,
       }],
       company: {
         id: '1',
-        archived: false,
+        _archived: false,
       },
       meta: {
-        archived: false,
+        _archived: false,
       },
     }, {
       id: '2',
       name: 'Billy',
       friends: [{
         id: '1',
-        archived: false,
+        _archived: false,
       }],
       meta: {
-        archived: false,
+        _archived: false,
       },
     }],
     [types.BLOG_TABLE]: [{
@@ -36,10 +36,10 @@ export default {
       title: 'How to Blog',
       author: {
         id: '1',
-        archived: false,
+        _archived: false,
       },
       meta: {
-        archived: false,
+        _archived: false,
       },
     }],
     [types.COMPANY_TABLE]: [{
@@ -47,14 +47,14 @@ export default {
       name: 'Apple',
       employees: [{
         id: '1',
-        archived: false,
+        _archived: false,
       }],
       address: {
         id: '1',
-        archived: false,
+        _archived: false,
       },
       meta: {
-        archived: false,
+        _archived: false,
       },
     }],
     [types.ADDRESS_TABLE]: [{
@@ -62,10 +62,10 @@ export default {
       city: 'Denver',
       company: {
         id: '1',
-        archived: false,
+        _archived: false,
       },
       meta: {
-        archived: false,
+        _archived: false,
       },
     }],
   },

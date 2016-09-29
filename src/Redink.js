@@ -6,7 +6,7 @@ import { destructureAlias, hydrateInverse } from './utils';
 
 const DEFAULT_RETHINKDB_PORT = 28015;
 
-class Redink {
+export default class Redink {
   constructor({
     db = '',
     host = '',
@@ -131,8 +131,8 @@ class Redink {
    * registry. Any string in `types` after a colon is interpreted as an alias.
    *
    * ```js
-   * const model = app.model('user');
-   * const modelArray = app.model('user', 'animal:pets');
+   * const model = app.model('user'); // user model
+   * const modelArray = app.model('user', 'animal:pets'); // animal model with 'pets' alias
    * ```
    *
    * @param {...String} types
@@ -172,5 +172,3 @@ class Redink {
     return new ModelArray(models);
   }
 }
-
-export default Redink;

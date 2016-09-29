@@ -1,4 +1,7 @@
-class Resource {
+import r from 'rethinkdb';
+import { retrieveManyRecords, retrieveSingleRecord } from './utils';
+
+export default class Resource {
   /**
    * Instantiates a Resource.
    *
@@ -34,18 +37,14 @@ class Resource {
 
       if (schema.hasRelationship(field)) {
         const relationship = schema.relationship(field);
+        const recordsOrRecord = relationship.relation === 'hasMany'
+          ? 'records'
+          : 'record';
 
-        if (relationship.relation === 'hasMany') {
-          this.relationships[field] = {
-            ...relationship,
-            records: record[field],
-          };
-        } else {
-          this.relationships[field] = {
-            ...relationship,
-            record: record[field],
-          };
-        }
+        this.relationships[field] = {
+          ...relationship,
+          [recordsOrRecord]: record[field],
+        };
 
         return;
       }
@@ -65,7 +64,7 @@ class Resource {
    * @return {Any}
    */
   attribute(attribute) {
-    return this.attributes[attribute] || '';
+    return this.attributes[attribute];
   }
 
   /**
@@ -75,14 +74,14 @@ class Resource {
    * app.model('user').fetchResource('1').then(user => {
    *   user.relationship('pets') === {
    *     type: 'animal',
+   *     relation: 'hasMany',
    *     records: [{
    *       id: '1',
-   *       archived: false,
+   *       _archived: false,
    *     }, {
    *       id: '2',
-   *       archived: false,
+   *       _archived: false,
    *     }],
-   *     relation: 'hasMany',
    *     inverse: {
    *       type: 'user',
    *       relation: 'belongsTo',
@@ -92,11 +91,11 @@ class Resource {
    *
    *   user.relationship('company') === {
    *     type: 'company',
+   *     relation: 'hasOne',
    *     record: {
    *       id: '1',
-   *       archived: false,
+   *       _archived: false,
    *     },
-   *     relation: 'hasOne',
    *     inverse: {
    *       type: 'user',
    *       relation: 'hasMany',
@@ -110,10 +109,21 @@ class Resource {
    * @return {Object}
    */
   relationship(relationship) {
-    return this.relationships[relationship] || '';
+    return this.relationships[relationship];
+  }
+
+  /**
+   * Ensures that the state of this resource propagates through its relationships that demand
+   * propagation.
+   *
+   * @return {Promise}
+   */
+  syncRelationships() {
+
   }
 
   fetch(relationship, options = {}) {
+
   }
 
   update(record) {
@@ -128,7 +138,8 @@ class Resource {
    * @return {Boolean}
    */
   isArchived() {
-    return this.meta.archived;
+    // eslint-disable-next-line
+    return this.meta._archived;
   }
 
   /**
@@ -152,5 +163,3 @@ class Resource {
 }
 
 export const createResource = (...args) => new Resource(...args);
-
-export default Resource;

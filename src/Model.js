@@ -3,7 +3,7 @@ import { retrieveManyRecords, retrieveSingleRecord } from './utils';
 import { createResource } from './Resource';
 import { createResourceArray } from './ResourceArray';
 
-class Model {
+export default class Model {
   /**
    * Instantiates a Model.
    *
@@ -46,8 +46,7 @@ class Model {
    * @return {ResourceArray}
    */
   find(options = {}) {
-    const conn = this.conn;
-    const schema = this.schema;
+    const { conn, schema } = this;
     const { type } = schema;
 
     const table = r.table(type);
@@ -93,8 +92,7 @@ class Model {
    * @returns {Resource|ResourceArray}
    */
   findRelated(id, relationship, options = {}) {
-    const conn = this.conn;
-    const { schema, schema: { type: parentType } } = this;
+    const { conn, schema, schema: { type: parentType } } = this;
     const { type: relationshipType, relation } = schema.relationships[relationship];
 
     const relatedTable = r.table(relationshipType);
@@ -159,21 +157,30 @@ class Model {
    * @returns {Resource}
    */
   create(record, options = {}) {
-    const conn = this.conn;
-    const schema = this.schema;
+    const { conn, schema } = this;
     const { type } = schema;
+
+    let createdRecordId;
+    let createdResource;
 
     return r.table(type)
       .insert(record)
       .run(conn)
 
       // retrieve the record that was just created
-      .then(({ generated_keys: keys }) =>
-        retrieveSingleRecord(type, keys[0], options)
-      )
+      .then(({ generated_keys: keys }) => {
+        createdRecordId = keys[0];
+        return retrieveSingleRecord(type, createdRecordId, options).run(conn);
+      })
 
-      // create the resource
-      .then(createdRecord => createResource(schema, createdRecord));
+      // create the resource and sync its relationships
+      .then(createdRecord => {
+        createdResource = createResource(conn, schema, createdRecord);
+        return createdResource.syncRelationships();
+      })
+
+      // return the resource
+      .then(() => createdResource);
   }
 
   /**
@@ -196,9 +203,10 @@ class Model {
    * @returns {Resource}
    */
   update(id, updates, options = {}) {
-    const conn = this.conn;
-    const schema = this.schema;
+    const { conn, schema } = this;
     const { type } = schema;
+
+    let updatedResource;
 
     return r.table(type).get(id)
       .update(updates)
@@ -208,7 +216,16 @@ class Model {
       .then(() => retrieveSingleRecord(type, id, options))
 
       // create the resource
-      .then(createdRecord => createResource(schema, createdRecord));
+      .then(record => {
+        updatedResource = createResource(schema, record);
+        return updatedResource;
+      })
+
+      // sync the resource's relationships
+      .then(() => updatedResource.syncRelationships())
+
+      // return the resource
+      .then(() => updatedResource);
   }
 
   /**
@@ -222,19 +239,34 @@ class Model {
    *
    * @async
    * @param {String} id
-   * @param {Object} data
+   * @param {Object} [options={}]
    * @returns {Resource}
    */
-  archive(id) {
-    const conn = this.conn;
+  archive(id, options = {}) {
+    const { conn, schema } = this;
     const { type } = this.schema;
 
+    let archivedResource;
+
     return r.table(type).get(id)
-      .update({ meta: { archived: true } })
-      .run(conn);
+      .update({ meta: { _archived: true } })
+      .run(conn)
+
+      // retrieve the record that was just archived
+      .then(() => retrieveSingleRecord(type, id, options))
+
+      // create the resource
+      .then(record => {
+        archivedResource = createResource(schema, record);
+        return archivedResource;
+      })
+
+      // sync the resource's relationships
+      .then(() => archivedResource.syncRelationships())
+
+      // return the resource
+      .then(() => archivedResource);
   }
 }
 
 export const createModel = (...args) => new Model(...args);
-
-export default Model;

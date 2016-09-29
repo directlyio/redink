@@ -1,6 +1,6 @@
 import Promise from 'bluebird';
 
-class ModelArray {
+export default class ModelArray {
   /**
    * Instantiates a ModelArray.
    *
@@ -131,5 +131,3 @@ class ModelArray {
 }
 
 export const createModelArray = (...args) => new ModelArray(...args);
-
-export default ModelArray;

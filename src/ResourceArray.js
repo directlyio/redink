@@ -1,7 +1,7 @@
 import Promise from 'bluebird';
 import Resource from './Resource';
 
-class ResourceArray {
+export default class ResourceArray {
   constructor(conn, schema, records) {
     if (!conn) {
       throw new TypeError(
@@ -73,5 +73,3 @@ class ResourceArray {
 }
 
 export const createResourceArray = (...args) => new ResourceArray(...args);
-
-export default ResourceArray;
