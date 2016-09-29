@@ -14,6 +14,14 @@ export default (table, options) => {
     table = table.between(options.between);
   }
 
+  if ('skip' in options) {
+    table = table.skip(options.skip);
+  }
+
+  if ('limit' in options) {
+    table = table.limit(options.limit);
+  }
+
   table = table.coerceTo('array');
 
   return table;

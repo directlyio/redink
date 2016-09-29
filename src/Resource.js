@@ -149,6 +149,21 @@ export default class Resource {
 
   }
 
+  /**
+   * Fetches either the `Resource` or `ResourceArray` related to this resource by `relationship`.
+   *
+   * ```
+   * app.model('user').fetchResource('1').then(user => {
+   *   return user.fetch('company');
+   * }).then(company => {
+   *   // Resource
+   * });
+   * ```
+   *
+   * @param  {[type]} relationship [description]
+   * @param  {[type]} options      =             {} [description]
+   * @return {[type]}              [description]
+   */
   fetch(relationship, options = {}) {
     if (!this.relationship(relationship)) {
       return Promise.resolve(null);
