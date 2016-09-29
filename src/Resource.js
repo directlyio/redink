@@ -160,9 +160,9 @@ export default class Resource {
    * });
    * ```
    *
-   * @param  {[type]} relationship [description]
-   * @param  {[type]} options      =             {} [description]
-   * @return {[type]}              [description]
+   * @param {String} relationship
+   * @param {Options} [options={}]
+   * @return {Resource|ResourceArray}
    */
   fetch(relationship, options = {}) {
     if (!this.relationship(relationship)) {
