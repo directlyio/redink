@@ -93,21 +93,23 @@ export default class Model {
    */
   findRelated(id, relationship, options = {}) {
     const { conn, schema, schema: { type: parentType } } = this;
-    const { type: relationshipType, relation } = schema.relationships[relationship];
+    const { type: relatedType, relation } = schema.relationships[relationship];
 
-    const relatedTable = r.table(relationshipType);
+    let relatedTable = r.table(relatedType);
     const parentTable = r.table(parentType);
     const ids = parentTable.get(id)(relationship)('id');
 
     if (relation === 'hasMany') {
-      relatedTable.getAll(ids);
-    } else {
-      relatedTable.get(ids);
+      relatedTable = relatedTable.getAll(r.args(ids));
+
+      return retrieveManyRecords(relatedTable, options)
+        .run(conn)
+        .then(records => createResourceArray(conn, schema, records));
     }
 
-    return retrieveManyRecords(relatedTable, options)
+    return retrieveSingleRecord(relatedTable, id, options)
       .run(conn)
-      .then(records => createResourceArray(conn, schema, records));
+      .then(record => createResource(conn, schema, record));
   }
 
   /**

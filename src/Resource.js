@@ -1,5 +1,6 @@
 import r from 'rethinkdb';
 import { retrieveManyRecords, retrieveSingleRecord } from './utils';
+import { createResourceArray } from './ResourceArray';
 
 export default class Resource {
   /**
@@ -23,6 +24,7 @@ export default class Resource {
     }
 
     this.conn = conn;
+    this.schema = schema;
     this.id = record.id;
     this.meta = record.meta || {};
 
@@ -74,6 +76,7 @@ export default class Resource {
    * app.model('user').fetchResource('1').then(user => {
    *   user.relationship('pets') === {
    *     type: 'animal',
+   *     schema: Schema,
    *     relation: 'hasMany',
    *     records: [{
    *       id: '1',
@@ -91,6 +94,7 @@ export default class Resource {
    *
    *   user.relationship('company') === {
    *     type: 'company',
+   *     schema: Schema,
    *     relation: 'hasOne',
    *     record: {
    *       id: '1',
@@ -123,7 +127,33 @@ export default class Resource {
   }
 
   fetch(relationship, options = {}) {
+    if (!this.relationship(relationship)) {
+      return Promise.resolve(null);
+    }
 
+    const { conn } = this;
+
+    const {
+      type,
+      schema,
+      relation,
+      record: relatedRecord,
+      records: relatedRecords,
+    } = this.relationship(relationship);
+
+    let table = r.table(type);
+
+    if (relation === 'hasMany') {
+      table = table.getAll(r.args(relatedRecords.map(record => record.id)));
+
+      return retrieveManyRecords(table, options)
+        .run(conn)
+        .then(records => createResourceArray(conn, schema, records));
+    }
+
+    return retrieveSingleRecord(table, relatedRecord.id, options)
+      .run(conn)
+      .then(record => new Resource(conn, schema, record));
   }
 
   update(record) {

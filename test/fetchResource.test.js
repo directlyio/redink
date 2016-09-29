@@ -31,6 +31,12 @@ test('should fetch a single user', async t => {
     console.log(user.relationship('blogs'));
     console.log(user.toObject());
 
+    const company = await user.fetch('company');
+    console.log('company:', company.toObject());
+
+    const employees = await company.fetch('employees');
+    console.log('employees', employees.toArray());
+
     t.deepEqual(user, expected);
   } catch (err) {
     console.log('err:', err);

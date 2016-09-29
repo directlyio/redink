@@ -74,8 +74,8 @@ export default class Redink {
     const newSchemas = { ...schemas };
 
     // invoke all relationship functions, i.e. all 'hasMany', 'hasOne', and 'belongsTo' functions
-    keys(schemas).forEach(schema => {
-      const { relationships } = schemas[schema];
+    keys(newSchemas).forEach(schema => {
+      const { relationships } = newSchemas[schema];
 
       keys(relationships).forEach(field => {
         if (typeof relationships[field] !== 'function') {
@@ -92,13 +92,24 @@ export default class Redink {
 
     // hydrate inverse relationships of the newly created schemas object
     keys(newSchemas).forEach(schema => {
-      const { relationships } = schemas[schema];
+      const { relationships } = newSchemas[schema];
 
       keys(relationships).forEach(field => {
         const { type } = relationships[field];
-        hydrateInverse(schemas, type);
+        hydrateInverse(newSchemas, type);
 
         if (!types.includes(type)) types.push(type);
+      });
+    });
+
+    // add schema key to every schema
+    keys(newSchemas).forEach(schema => {
+      const { relationships } = newSchemas[schema];
+
+      keys(relationships).forEach(field => {
+        const { type } = relationships[field];
+
+        newSchemas[schema].relationships[field].schema = newSchemas[type];
       });
     });
 
