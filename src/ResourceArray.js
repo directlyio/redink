@@ -1,6 +1,12 @@
 import Resource from './Resource';
 
 export default class ResourceArray {
+  /**
+   * @class ResourceArray
+   * @param {Object} conn
+   * @param {Object} schema
+   * @param {Array} records
+   */
   constructor(conn, schema, records) {
     if (!conn) {
       throw new TypeError(
@@ -28,6 +34,7 @@ export default class ResourceArray {
   /**
    * Returns the first resource.
    *
+   * @method first
    * @return {Resource}
    */
   first() {
@@ -37,6 +44,7 @@ export default class ResourceArray {
   /**
    * Returns the last resource.
    *
+   * @method last
    * @return {Resource}
    */
   last() {
@@ -54,6 +62,7 @@ export default class ResourceArray {
    * });
    * ```
    *
+   * @method map
    * @param {Function} fn
    * @return {Array}
    */
@@ -70,6 +79,7 @@ export default class ResourceArray {
    * });
    * ```
    *
+   * @method fn
    * @param {Function} fn
    */
   each(fn) {
@@ -79,6 +89,7 @@ export default class ResourceArray {
   /**
    * Returns the number of resources.
    *
+   * @method size
    * @return {Number}
    */
   size() {
@@ -88,6 +99,7 @@ export default class ResourceArray {
   /**
    * Returns an array of plan `Resource` objects.
    *
+   * @method toArray
    * @return {Array}
    */
   toArray() {

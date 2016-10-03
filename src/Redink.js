@@ -7,6 +7,15 @@ import { destructureAlias, hydrateInverse } from './utils';
 const DEFAULT_RETHINKDB_PORT = 28015;
 
 export default class Redink {
+  /**
+   * @class Redink
+   * @param {Object} [options={}]
+   * @param {String} [options.db='']
+   * @param {String} [options.host='']
+   * @param {String} [options.user='']
+   * @param {String} [options.password='']
+   * @param {Number} [options.port=28015]
+   */
   constructor({
     db = '',
     host = '',
@@ -27,6 +36,7 @@ export default class Redink {
    * Connects to the RethinkDB database.
    *
    * @async
+   * @method connect
    * @return {Promise}
    */
   connect() {
@@ -46,6 +56,7 @@ export default class Redink {
    * Disconnects from the RethinkDB database.
    *
    * @async
+   * @method disconnect
    * @return {Promise}
    */
   disconnect() {
@@ -61,8 +72,9 @@ export default class Redink {
    * relationships where necessary. After finishing the graph, it ensures that all proper tables are
    * created with each schema `type` as the table name.
    *
+   * @method registerSchemas
    * @param {Object} schemas - Redink schemas.
-   * @return {Promise}
+   * @return {Promise<Object>}
    *
    * @todo Create indices where necessary.
    */
@@ -146,6 +158,7 @@ export default class Redink {
    * const modelArray = app.model('user', 'animal:pets'); // animal model with 'pets' alias
    * ```
    *
+   * @method model
    * @param {...String} types
    * @returns {Model|ModelArray}
    */

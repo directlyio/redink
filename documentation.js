@@ -60,7 +60,7 @@ fs.readdir(root)
   })
 
   /**
-   * Convert each comments array into their JSDoc ASTs.
+   * Write the JSON file to disk.
    */
   .then(classesWithComments => {
     const file = JSON.stringify(classesWithComments);

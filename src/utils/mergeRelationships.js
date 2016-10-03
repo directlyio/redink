@@ -7,8 +7,10 @@ import r from 'rethinkdb';
  * ```
  * // example options
  * const options = {
- *   pets: true,
- *   company: false,
+ *   include: {
+ *     pets: true,
+ *     company: true,
+ *   },
  * };
  * ```
  *

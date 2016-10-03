@@ -12,6 +12,7 @@ export default class Model {
   /**
    * Instantiates a Model.
    *
+   * @class Model
    * @param {Object} conn - RethinkDB connection object.
    * @param {String} type
    * @param {Schema} schema
@@ -47,8 +48,10 @@ export default class Model {
    * });
    * ```
    *
+   * @async
+   * @method find
    * @param {Object} [options={}]
-   * @return {ResourceArray}
+   * @return {Promise<ResourceArray>}
    */
   find(options = {}) {
     const { conn, schema } = this;
@@ -66,8 +69,9 @@ export default class Model {
   /**
    * Finds the first resource (out of potentially many) that matches the criteria in `options.`
    *
+   * @async
    * @param {Object} [options={}]
-   * @return {Resource}
+   * @return {Promise<Resource>}
    */
   findOne(options = {}) {
     return this.find(options).then(resources => resources.first());
@@ -96,7 +100,7 @@ export default class Model {
    * @param {String} id - The id of the parent resource.
    * @param {String} relationship - The relationship to the parent.
    * @param {Object} [options={}]
-   * @returns {Resource|ResourceArray}
+   * @returns {Promise<Resource|ResourceArray>}
    */
   findRelated(id, relationship, options = {}) {
     const { conn, schema, schema: { type: parentType } } = this;
@@ -134,7 +138,7 @@ export default class Model {
    * @async
    * @param {String} id - The ID of the resource to retrieve.
    * @param {Object} [options={}]
-   * @returns {Resource}
+   * @returns {Promise<Resource>}
    */
   fetchResource(id, options = {}) {
     const { conn, schema } = this;
@@ -168,7 +172,7 @@ export default class Model {
    * @async
    * @param {Object} record
    * @param {Object} [options={}]
-   * @returns {Resource}
+   * @returns {Promise<Resource>}
    */
   create(record, options = {}) {
     const { conn, schema } = this;
@@ -212,7 +216,7 @@ export default class Model {
    * @param {String} id
    * @param {Object} updates
    * @param {Object} [options={}]
-   * @returns {Resource}
+   * @returns {Promise<Resource>}
    */
   update(id, updates, options = {}) {
     const { conn, schema } = this;
@@ -251,7 +255,7 @@ export default class Model {
    * @async
    * @param {String} id
    * @param {Object} [options={}]
-   * @returns {Resource}
+   * @returns {Promise<Resource>}
    */
   archive(id, options = {}) {
     const { conn, schema } = this;

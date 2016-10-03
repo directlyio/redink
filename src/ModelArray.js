@@ -17,9 +17,8 @@ export default class ModelArray {
    * };
    * ```
    *
-   * @private
+   * @class ModelArray
    * @param {Object} models - A dictionary of models, including their optional aliases.
-   * @return {ModelArray}
    */
   constructor(models) {
     this.models = models;
@@ -97,7 +96,7 @@ export default class ModelArray {
    *
    * @async
    * @param {Object} actions
-   * @returns {Object}
+   * @returns {Promise<Object>}
    */
   map(actions) {
     const models = this.models;

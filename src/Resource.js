@@ -11,6 +11,7 @@ export default class Resource {
   /**
    * Instantiates a Resource.
    *
+   * @class Resource
    * @param {Object} conn - RethinkDB connection object.
    * @param {Schema} schema
    * @param {Object} record
@@ -37,11 +38,13 @@ export default class Resource {
     this.relationships = {};
 
     Object.keys(record).forEach(field => {
+      // hydrate attributes
       if (schema.hasAttribute(field)) {
         this.attributes[field] = record[field];
         return;
       }
 
+      // hydrate relationships
       if (schema.hasRelationship(field)) {
         const relationship = schema.relationship(field);
         const recordsOrRecord = relationship.relation === 'hasMany'
@@ -67,6 +70,7 @@ export default class Resource {
    * });
    * ```
    *
+   * @method attribute
    * @param {String} attribute
    * @return {Any}
    */
@@ -77,6 +81,7 @@ export default class Resource {
   /**
    * Returns all the attributes.
    *
+   * @method attributes
    * @return {Object}
    */
   attributes() {
@@ -123,6 +128,7 @@ export default class Resource {
    * });
    * ```
    *
+   * @method relationship
    * @param {String} relationship
    * @return {Object}
    */
@@ -133,6 +139,7 @@ export default class Resource {
   /**
    * Returns all the relationships.
    *
+   * @method relationships
    * @return {Object}
    */
   relationships() {
@@ -143,6 +150,7 @@ export default class Resource {
    * Ensures that the state of this resource propagates through its relationships that demand
    * propagation.
    *
+   * @private
    * @return {Promise}
    */
   syncRelationships() {
@@ -160,9 +168,10 @@ export default class Resource {
    * });
    * ```
    *
+   * @method fetch
    * @param {String} relationship
    * @param {Options} [options={}]
-   * @return {Resource|ResourceArray}
+   * @return {Promise<Resource|ResourceArray>}
    */
   fetch(relationship, options = {}) {
     if (!this.relationship(relationship)) {
@@ -206,6 +215,7 @@ export default class Resource {
   /**
    * Returns true if this is archived.
    *
+   * @method isArchived
    * @return {Boolean}
    */
   isArchived() {
@@ -216,6 +226,7 @@ export default class Resource {
   /**
    * Returns a plain object with an `attributes` key, a `relationships` key, and a `meta` key.
    *
+   * @method toObject
    * @return {Object}
    */
   toObject() {
