@@ -7,3 +7,4 @@ coverage.lcov
 .nyc_output
 rethinkdb_data
 .db-*
+*.log

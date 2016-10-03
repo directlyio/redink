@@ -17,8 +17,8 @@ const root = path.resolve(__dirname, 'src');
 fs.readdir(root)
 
   /**
-   * Extract the text from all the files to parse into an objet with the keys being the class name,
-   * and the value being the extracted text.
+   * Extract the text from all the files to parse into an objet with the each key being the class
+   * name and each value being the extracted text.
    */
   .then(files => {
     const readFile = (file) => fs.readFile(`${root}/${file}`, { encoding: 'utf8' });

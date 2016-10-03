@@ -79,16 +79,6 @@ export default class Resource {
   }
 
   /**
-   * Returns all the attributes.
-   *
-   * @method attributes
-   * @return {Object}
-   */
-  attributes() {
-    return this.attributes;
-  }
-
-  /**
    * Returns a relationship of the resource.
    *
    * ```
@@ -134,16 +124,6 @@ export default class Resource {
    */
   relationship(relationship) {
     return this.relationships[relationship];
-  }
-
-  /**
-   * Returns all the relationships.
-   *
-   * @method relationships
-   * @return {Object}
-   */
-  relationships() {
-    return this.relationships;
   }
 
   /**

@@ -38,8 +38,8 @@ test('should fetch a single user with some fields plucked', async t => {
       include: { friends: true, company: true },
     });
 
-    t.is(Object.keys(user.attributes()).length, 0);
-    t.is(Object.keys(user.relationships()).length, 1);
+    t.is(Object.keys(user.attributes).length, 0);
+    t.is(Object.keys(user.relationships).length, 1);
     t.is(user.id, '1');
   } catch (err) {
     t.fail(err);
