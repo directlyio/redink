@@ -6,10 +6,6 @@ function singleton() {
       instance() {
         return singleton.instance;
       },
-
-      disconnect() {
-        return singleton.instance.disconnect();
-      },
     };
   }
 
@@ -30,7 +26,7 @@ function singleton() {
   };
 }
 
-export const registerSchemas = (...args) => singleton().instance().registerSchemas(...args);
 export const model = (...args) => singleton().instance().model(...args);
+export const disconnect = (...args) => singleton().instance().disconnect(...args);
 
 export default singleton;

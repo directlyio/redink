@@ -134,7 +134,6 @@ export default class Resource {
    * @return {Promise}
    */
   syncRelationships() {
-
   }
 
   /**
@@ -186,10 +185,174 @@ export default class Resource {
       .then(record => new Resource(conn, schema, record));
   }
 
+  /**
+   * Updates this resoure's attributes based on `attributes`.
+   *
+   * @param {Object} updates
+   * @return {Promise<Resource>}
+   */
   update(updates) {
   }
 
   archive() {
+  }
+
+  /**
+   * Reloads this resource with the latest data.
+   *
+   * @return {Promise<Resource>}
+   */
+  reload() {
+  }
+
+  /**
+   * @async
+   * @param {String} relationship
+   * @param {(String[]|ResourceArray)} oldIds
+   * @param {(String[]|ResourceArray)} newIds
+   * @return {Promise<Resource>}
+   */
+  reconcile(relationship, oldIds, newIds) {
+  }
+
+  /**
+   * Assigns a resource to this resource's `hasOne` relationship identified by `relationship`. The
+   * `data` argument can either be a Resource or String id.
+   *
+   * ```
+   * app.model('user').fetchResource('1').then(user => {
+   *   return user.put('company', '1');
+   * }).then(user => {
+   *   // Resource
+   * });
+   *
+   * app.model('user', 'company').map({
+   *   user(model) {
+   *     return model.fetchResource('1');
+   *   },
+   *   company(model) {
+   *     return model.fetchResource('1');
+   *   },
+   * }).then(results => {
+   *   return results.user.put('company', results.company);
+   * }).then(user => {
+   *   // Resource
+   * });
+   * ```
+   *
+   * @async
+   * @param {String} relationship
+   * @param {(String|Resource)} data
+   * @return {Promise<Resource>}
+   */
+  put(relationship, data) {
+  }
+
+  /**
+   * Removes this resource's `hasOne` relationship. The `data` argument can either be a `Resource`
+   * or String id of the resource to remove.
+   *
+   * ```
+   * app.model('user').fetchResource('1').then(user => {
+   *   return user.remove('company');
+   * }).then(user => {
+   *   // Resource
+   * });
+   *
+   * app.model('user', 'company').map({
+   *   user(model) {
+   *     return model.fetchResource('1');
+   *   },
+   *   company(model) {
+   *     return model.fetchResource('1');
+   *   },
+   * }).then(results => {
+   *   return results.user.remove('company', results.company);
+   * }).then(user => {
+   *   // Resource
+   * });
+   * ```
+   *
+   * @async
+   * @param {String} relationship
+   * @param {(String|Resource)} data
+   * @return {Promise<Resource>}
+   */
+  remove(relationship, data) {
+  }
+
+  /**
+   * Pushes data to this resource's `relationship`. The `data` can either be a `ResourceArray` or
+   * an array of Strings representing ids.
+   *
+   * ```
+   * app.model('user').fetchResource('1').then(user => {
+   *   return user.push('pets', ['1', 2]);
+   * }).then(user => {
+   *   const newPets = user.relationship('pets'); // will include pets with ids '1' and '2'
+   * });
+   *
+   * app.model('user', 'animal:pets').map({
+   *   user(model) {
+   *     return model.fetchResource('1');
+   *   },
+   *   pets(model) {
+   *     return model.find({ filter: { name: 'Lassy' } }),
+   *   },
+   * }).then(results => {
+   *   return results.user.push('pets', results.pets);
+   * }).then(user => {
+   *   const newPets = user.relationship('pets'); // will include pets with ids '1' and '2'
+   * });
+   * ```
+   *
+   * @async
+   * @param {String} relationship
+   * @param {(String[]|ResourceArray)} ids
+   * @return {Promise<Resource>}
+   */
+  push(relationship, data) {
+  }
+
+  /**
+   * Pushes data to this resource's `relationship`. The `data` can either be a `Resource` or
+   * a String id.
+   *
+   * ```
+   * app.model('user').fetchResource('1').then(user => {
+   *   return user.put('company', '1');
+   * }).then(user => {
+   *   const newCompany = user.relationship('company'); // will be a company with id of '1'
+   * });
+   *
+   * app.model('user', 'animal:pets').map({
+   *   user(model) {
+   *     return model.fetchResource('1');
+   *   },
+   *   pets(model) {
+   *     return model.find({ filter: { name: 'Lassy' } }),
+   *   },
+   * }).then(results => {
+   *   return results.user.push('pets', results.pets);
+   * }).then(user => {
+   *   const newPets = user.relationship('pets'); // will include pets with ids '1' and '2'
+   * });
+   * ```
+   *
+   * @async
+   * @param {String} relationship
+   * @param {(String[]|ResourceArray)} ids
+   * @return {Promise<Resource>}
+   */
+  pop(relationship, data) {
+    const { relation } = this.relationship(relationship);
+
+    if (relation !== 'hasMany') {
+      throw new TypeError(
+        `Tried calling 'pop' on a relationship whose relation is '${relation}'. This method only ` +
+        'works for relationships whose relation is \'hasMany\'.'
+      );
+    }
   }
 
   /**

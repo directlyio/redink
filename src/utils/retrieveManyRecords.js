@@ -22,6 +22,10 @@ export default (table, options) => {
     table = table.limit(options.limit);
   }
 
+  if ('orderBy' in options) {
+    table = table.orderBy(options.orderBy);
+  }
+
   table = table.coerceTo('array');
 
   return table;

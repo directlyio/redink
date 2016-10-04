@@ -14,6 +14,7 @@ export default class Redink {
    * @param {String} [options.host='']
    * @param {String} [options.user='']
    * @param {String} [options.password='']
+   * @param {Object} [options.schemas={}]
    * @param {Number} [options.port=28015]
    */
   constructor({
@@ -21,12 +22,14 @@ export default class Redink {
     host = '',
     user = '',
     password = '',
+    schemas = {},
     port = DEFAULT_RETHINKDB_PORT,
   }) {
     this.db = db;
     this.host = host;
     this.user = user;
     this.password = password;
+    this.schemas = schemas;
     this.port = port;
 
     this.models = {};
@@ -49,7 +52,10 @@ export default class Redink {
     if (this.user) options.user = this.user;
     if (this.password) options.password = this.password;
 
-    return r.connect(options).then(conn => (this.conn = conn));
+    return r.connect(options).then(conn => {
+      this.conn = conn;
+      return this.registerSchemas(this.schemas);
+    });
   }
 
   /**
@@ -72,6 +78,7 @@ export default class Redink {
    * relationships where necessary. After finishing the graph, it ensures that all proper tables are
    * created with each schema `type` as the table name.
    *
+   * @private
    * @method registerSchemas
    * @param {Object} schemas - Redink schemas.
    * @return {Promise<Object>}
