@@ -90,9 +90,7 @@ export default (schemas, type) => (record) => {
       ? (
           r.branch(hasFields, {
             [key]: table.getAll(r.args(mapHasManyToIds(record(key))))
-              .filter(relatedRecord => r.not(relatedRecord('meta')('archived')))
-              .coerceTo('array')
-              .orderBy('id'),
+              .coerceTo('array'),
           }, {})
         )
       : (

@@ -1,6 +1,6 @@
 {
   "name": "redink",
-  "version": "1.0.0-alpha.10",
+  "version": "1.0.0-alpha.11",
   "description": "RethinkDB ORM",
   "main": "dist/index.js",
   "scripts": {

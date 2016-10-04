@@ -254,14 +254,11 @@ export default class Redink {
     const search = filterLike(parsedFilters);
 
     const tableQuery = table
-      .filter(search || parsedFilters)
-      .orderBy('id');
+      .filter(search || parsedFilters);
 
-    const shouldMerge = sideload
-      ? tableQuery.merge(fieldsToMerge)
-      : tableQuery.orderBy('id');
+    if (sideload) tableQuery.merge(fieldsToMerge);
 
-    return shouldMerge
+    return tableQuery
       .coerceTo('array')
       .run(conn)
       .then(finalize);
@@ -319,7 +316,7 @@ export default class Redink {
    * @param {String} id - The ID of the record that is going to be fetched.
    * @return {(Object|Object[])}
    */
-  fetchRelated(type, id, field, filter = {}) {
+  fetchRelated(type, id, field) {
     if (process.env.REDINK_DEBUG) {
       console.log( // eslint-disable-line
         `Fetching '${field}' from a record of type '${type}' with id '${id}' at ` +
@@ -333,7 +330,6 @@ export default class Redink {
 
     const parentTable = getTable(schemas, type);
     const relationships = getRelationships(schemas, type);
-    const parsedFilters = parseFilters(filter, relationships);
 
     if (!relationships.hasOwnProperty(field)) {
       throw invalidRelationshipType(type, field);
@@ -351,11 +347,7 @@ export default class Redink {
         parentTable.get(id)(field).filter(rel => r.not(rel('archived')))('id')
       );
 
-      // filter out archived entities
-      parsedFilters.meta = { archived: false };
-
-      return relatedTable.getAll(ids).filter(parsedFilters)
-        .orderBy('id')
+      return relatedTable.getAll(ids)
         .merge(fieldsToMerge)
         .coerceTo('array')
         .run(conn)
