@@ -10,5 +10,11 @@ export default (table, id, options) => {
     table = table.pluck(options.pluck);
   }
 
+  if ('without' in options) {
+    // disallow forgoing the id
+    options.without.id = false;
+    table = table.without(options.without);
+  }
+
   return table;
 };

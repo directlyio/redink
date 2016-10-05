@@ -12,6 +12,12 @@ export default (table, options) => {
     table = table.pluck(options.pluck);
   }
 
+  if ('without' in options) {
+    // disallow forgoing the id
+    options.without.id = false;
+    table = table.without(options.without);
+  }
+
   if ('between' in options) {
     table = table.between(options.between);
   }
