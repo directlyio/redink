@@ -185,14 +185,14 @@ test('should update an animal\'s `belongsTo` relationship', async t => {
       },
     };
 
-    const originalOwnerBefore = await db().instance().fetch('user', '2');
+    const originalOwnerBefore = await db().instance().fetch('user', '2', {});
     t.deepEqual(originalOwnerBefore.pets, [{
       id: '2',
       species: 'Cat',
       owner: '2',
     }]);
 
-    const newOwnerBefore = await db().instance().fetch('user', '1');
+    const newOwnerBefore = await db().instance().fetch('user', '1', {});
     t.deepEqual(newOwnerBefore.pets, [{
       id: '1',
       species: 'Dog',
@@ -208,10 +208,10 @@ test('should update an animal\'s `belongsTo` relationship', async t => {
       planet: '1',
     });
 
-    const originalOwnerAfter = await db().instance().fetch('user', '2');
+    const originalOwnerAfter = await db().instance().fetch('user', '2', {});
     t.deepEqual(originalOwnerAfter.pets, []);
 
-    const newOwnerAfter = await db().instance().fetch('user', '1');
+    const newOwnerAfter = await db().instance().fetch('user', '1', {});
     t.deepEqual(newOwnerAfter.pets, [{
       id: '1',
       species: 'Dog',

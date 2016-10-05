@@ -7,7 +7,7 @@ applyHooks(test);
 
 test('should find the user\'s `hasOne` relationship', async t => {
   try {
-    const company = await db().instance().fetchRelated('user', '1', 'company');
+    const company = await db().instance().fetchRelated('user', '1', 'company', {});
     const expected = {
       id: '1',
       name: 'Directly, Inc.',
@@ -28,7 +28,7 @@ test('should find the user\'s `hasOne` relationship', async t => {
 
 test('should find the user\'s `belongsTo` relationship', async t => {
   try {
-    const planet = await db().instance().fetchRelated('user', '1', 'planet');
+    const planet = await db().instance().fetchRelated('user', '1', 'planet', {});
     const expected = {
       id: '1',
       name: 'Earth',
@@ -47,9 +47,30 @@ test('should find the user\'s `belongsTo` relationship', async t => {
   }
 });
 
+test('should find the user\'s `belongsTo` relationship with `pluck`', async t => {
+  try {
+    const planet = await db().instance().fetchRelated('user', '1', 'planet', {
+      sideload: {
+        inhabitants: false,
+      },
+      pluck: {
+        name: true,
+      },
+    });
+    const expected = {
+      id: '1',
+      name: 'Earth',
+    };
+
+    t.deepEqual(planet, expected);
+  } catch (err) {
+    t.fail(err);
+  }
+});
+
 test('should find the user\'s `hasMany` relationship', async t => {
   try {
-    const pets = await db().instance().fetchRelated('user', '1', 'pets');
+    const pets = await db().instance().fetchRelated('user', '1', 'pets', {});
     const expected = [{
       id: '1',
       species: 'Dog',
@@ -68,15 +89,15 @@ test('should find the user\'s `hasMany` relationship', async t => {
   }
 });
 
-test('should find the user\'s `hasMany` relationship with a filter (1)', async t => {
+test('should find the user\'s `hasMany` relationship with `pluck`', async t => {
   try {
     const pets = await db().instance().fetchRelated('user', '1', 'pets', {
-      species: 'Dog',
+      pluck: {
+        owner: true,
+      },
     });
-
     const expected = [{
       id: '1',
-      species: 'Dog',
       owner: {
         id: '1',
         name: 'Ben Franklin',
@@ -92,13 +113,20 @@ test('should find the user\'s `hasMany` relationship with a filter (1)', async t
   }
 });
 
-test('should find the user\'s `hasMany` relationship with a filter (2)', async t => {
+test('should find the user\'s `hasMany` relationship with `without`', async t => {
   try {
     const pets = await db().instance().fetchRelated('user', '1', 'pets', {
-      species: 'Zebra',
+      sideload: {
+        owner: false,
+      },
+      without: {
+        owner: true,
+      },
     });
-
-    const expected = [];
+    const expected = [{
+      id: '1',
+      species: 'Dog',
+    }];
 
     t.deepEqual(pets, expected);
   } catch (err) {

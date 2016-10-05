@@ -18,7 +18,7 @@ import requestHasValidRelationships from './utils/requestHasValidRelationships';
 import * as types from './constants/relationshipTypes';
 
 export default class Redink {
-  defaultPageLimit = 50
+  defaultPageLimit = 50;
 
   constructor(schemas = {}, name = '', host = '', user = '', password = '', port = 28015) {
     this.schemas = schemas;
@@ -233,7 +233,7 @@ export default class Redink {
    * @param {Boolean} sideload - Determine whether to merge fields or not.
    * @return {Object[]}
    */
-  find(type, filter = {}, sideload = true) {
+  find(type, filter, options) {
     if (process.env.REDINK_DEBUG) {
       console.log( // eslint-disable-line
         `Finding a record of type '${type}' at '${this.host}:${this.port}' with db '${this.name}'`
@@ -244,19 +244,46 @@ export default class Redink {
 
     const table = getTable(schemas, type);
     const relationships = getRelationships(schemas, type);
-    const fieldsToMerge = getFieldsToMerge(schemas, type);
+    const fieldsToMerge = getFieldsToMerge(schemas, type, options);
     const parsedFilters = parseFilters(filter, relationships);
     const finalize = (records) => serialize(schemas, type, records);
 
     // filter out archived entities
     parsedFilters.meta = { archived: false };
-
     const search = filterLike(parsedFilters);
 
-    const tableQuery = table
-      .filter(search || parsedFilters);
+    let tableQuery;
 
-    if (sideload) tableQuery.merge(fieldsToMerge);
+    if (options.pluck && options.without) {
+      throw new Error(
+        'Invalid attributes. Currently Redink only supports `pluck` or `without`.'
+      );
+    }
+
+    tableQuery = table
+      .filter(search || parsedFilters)
+      .merge(fieldsToMerge);
+
+    if (options.pluck) {
+      const pluck = {
+        ...options.pluck,
+        id: true,
+      };
+
+      tableQuery = table
+        .filter(search || parsedFilters)
+        .merge(fieldsToMerge)
+        .pluck(pluck);
+    }
+
+    if (options.without) {
+      const { without } = options;
+
+      tableQuery = table
+        .filter(search || parsedFilters)
+        .merge(fieldsToMerge)
+        .without(without);
+    }
 
     return tableQuery
       .coerceTo('array')
@@ -277,7 +304,7 @@ export default class Redink {
    * @param {String} id - The ID of the record that is going to be fetched.
    * @return {Object}
    */
-  fetch(type, id) {
+  fetch(type, id, options) {
     if (process.env.REDINK_DEBUG) {
       console.log( // eslint-disable-line
         `Fetching a record of type '${type}' with id '${id}' at '${this.host}:${this.port}' with ` +
@@ -289,12 +316,43 @@ export default class Redink {
     id = `${id}`;
     const { conn, schemas } = this;
     const table = r.table(type);
-    const fieldsToMerge = getFieldsToMerge(schemas, type);
+    const fieldsToMerge = getFieldsToMerge(schemas, type, options);
     const finalize = (record) => serialize(schemas, type, record);
 
-    return table
+    let tableQuery;
+
+    if (options.pluck && options.without) {
+      throw new Error(
+        'Invalid attributes. Currently Redink only supports `pluck` or `without`.'
+      );
+    }
+
+    tableQuery = table
       .get(id)
-      .merge(fieldsToMerge)
+      .merge(fieldsToMerge);
+
+    if (options.pluck) {
+      const pluck = {
+        ...options.pluck,
+        id: true,
+      };
+
+      tableQuery = table
+        .get(id)
+        .merge(fieldsToMerge)
+        .pluck(pluck);
+    }
+
+    if (options.without) {
+      const { without } = options;
+
+      tableQuery = table
+        .get(id)
+        .merge(fieldsToMerge)
+        .without(without);
+    }
+
+    return tableQuery
       .run(conn)
       .then(finalize);
   }
@@ -316,7 +374,7 @@ export default class Redink {
    * @param {String} id - The ID of the record that is going to be fetched.
    * @return {(Object|Object[])}
    */
-  fetchRelated(type, id, field) {
+  fetchRelated(type, id, field, options) {
     if (process.env.REDINK_DEBUG) {
       console.log( // eslint-disable-line
         `Fetching '${field}' from a record of type '${type}' with id '${id}' at ` +
@@ -338,7 +396,15 @@ export default class Redink {
     const { table: relatedType, original: relationshipType } = relationships[field];
 
     const relatedTable = getTable(schemas, relatedType);
-    const fieldsToMerge = getFieldsToMerge(schemas, relatedType);
+    const fieldsToMerge = getFieldsToMerge(schemas, relatedType, options);
+
+    let relatedQuery;
+
+    if (options.pluck && options.without) {
+      throw new Error(
+        'Invalid attributes. Currently Redink only supports `pluck` or `without`.'
+      );
+    }
 
     if (relationshipType === types.HAS_MANY) {
       const finalize = (records) => serialize(schemas, relatedType, records);
@@ -347,8 +413,32 @@ export default class Redink {
         parentTable.get(id)(field).filter(rel => r.not(rel('archived')))('id')
       );
 
-      return relatedTable.getAll(ids)
-        .merge(fieldsToMerge)
+      relatedQuery = relatedTable
+        .getAll(ids)
+        .merge(fieldsToMerge);
+
+      if (options.pluck) {
+        const pluck = {
+          ...options.pluck,
+          id: true,
+        };
+
+        relatedQuery = relatedTable
+          .getAll(ids)
+          .merge(fieldsToMerge)
+          .pluck(pluck);
+      }
+
+      if (options.without) {
+        const { without } = options;
+
+        relatedQuery = relatedTable
+          .getAll(ids)
+          .merge(fieldsToMerge)
+          .without(without);
+      }
+
+      return relatedQuery
         .coerceTo('array')
         .run(conn)
         .then(finalize);
@@ -356,9 +446,32 @@ export default class Redink {
 
     const finalize = (record) => serialize(schemas, relatedType, record);
 
-    return relatedTable
+    relatedQuery = relatedTable
       .get(parentTable.get(id)(field)('id'))
-      .merge(fieldsToMerge)
+      .merge(fieldsToMerge);
+
+    if (options.pluck) {
+      const pluck = {
+        ...options.pluck,
+        id: true,
+      };
+
+      relatedQuery = relatedTable
+        .get(parentTable.get(id)(field)('id'))
+        .merge(fieldsToMerge)
+        .pluck(pluck);
+    }
+
+    if (options.without) {
+      const { without } = options;
+
+      relatedQuery = relatedTable
+        .get(parentTable.get(id)(field)('id'))
+        .merge(fieldsToMerge)
+        .without(without);
+    }
+
+    return relatedQuery
       .run(conn)
       .then(finalize);
   }

@@ -58,7 +58,7 @@ import invalidSchemaType from '../errors/invalidSchemaType';
  * @param  {Object} results - Un-merged table object.
  * @return {Function}
  */
-export default (schemas, type) => (record) => {
+export default (schemas, type, options = {}) => (record) => {
   if (!schemas.hasOwnProperty(type)) {
     throw invalidSchemaType(type);
   }
@@ -67,6 +67,7 @@ export default (schemas, type) => (record) => {
 
   const { relationships } = schemas[type];
   const keys = Object.keys(relationships);
+  const { sideload } = options;
 
   return r({}).merge(r.args(keys.map(key => {
     const {
@@ -74,12 +75,12 @@ export default (schemas, type) => (record) => {
       belongsTo,
       hasOne,
       embedded,
-      sideloaded,
     } = relationships[key];
 
     // don't merge embedded objects
     if (embedded) return {};
-    if (typeof sideloaded === 'boolean' && sideloaded === false) return {};
+    if (sideload === false) return {};
+    if (typeof sideload === 'object' && sideload.hasOwnProperty(key)) return {};
 
     const table = r.table(hasMany || belongsTo || hasOne);
     const hasFields = record.hasFields(key);

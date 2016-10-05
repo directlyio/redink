@@ -7,14 +7,16 @@ export const create = (type, data) => db().instance().create(type, data);
 export const update = (type, id, data) => db().instance().update(type, id, data);
 /* istanbul ignore next */
 export const archive = (type, id) => db().instance().archive(type, id);
+
 /* istanbul ignore next */
-export const find = (type, filter = {}, sideload = true) =>
-  db().instance().find(type, filter, sideload);
+export const find = (type, filter = {}, options = {}) =>
+  db().instance().find(type, filter, options);
 /* istanbul ignore next */
-export const fetch = (type, id) => db().instance().fetch(type, id);
+export const fetch = (type, id, options = {}) =>
+  db().instance().fetch(type, id, options);
 /* istanbul ignore next */
-export const fetchRelated = (type, id, field, filter = {}) =>
-  db().instance().fetchRelated(type, id, field);
+export const fetchRelated = (type, id, field, options = {}) =>
+  db().instance().fetchRelated(type, id, field, options);
 
 export default () => ({
   start({ host, name, schemas, port, user, password }) {
