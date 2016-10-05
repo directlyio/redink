@@ -36,7 +36,7 @@ export default class Redink {
   }
 
   /**
-   * Connects to the RethinkDB database.
+   * Connects to the RethinkDB database and registers the schemas.
    *
    * @async
    * @method connect
@@ -167,7 +167,7 @@ export default class Redink {
    *
    * @method model
    * @param {...String} types
-   * @returns {Model|ModelArray}
+   * @returns {(Model|ModelArray)}
    */
   model(...types) {
     if (types.length === 0) {
