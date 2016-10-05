@@ -1,6 +1,8 @@
-const HAS_MANY = 'hasMany';
-const BELONGS_TO = 'belongsTo';
-const HAS_ONE = 'hasOne';
+import {
+  BELONGS_TO,
+  HAS_ONE,
+  HAS_MANY,
+} from '../constants/relationshipTypes';
 
 const relationshipObject = (type, field, inverse, options) => ({
   type,
