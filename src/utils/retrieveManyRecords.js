@@ -1,5 +1,7 @@
 /* eslint-disable no-param-reassign */
 export default (table, options) => {
+  if (typeof options !== 'object') return table;
+
   if ('filter' in options) {
     table = table.filter(options.filter);
   }

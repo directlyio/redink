@@ -42,7 +42,16 @@ export default class Model {
    * app.model('user').find({
    *   filter: { name: 'Dylan' },
    *   pluck: { password: true },
-   *   include: { pets: true },
+   *   include: {
+   *     pets: {
+   *       filter: (pet) => pet('age').gt(6),
+   *       pluck: {
+   *         favoriteTreat: true,
+   *         color: true,
+   *       },
+   *     },
+   *     company: true,
+   *   },
    * }).then(users => {
    *   // ResourceArray
    * });
@@ -52,6 +61,8 @@ export default class Model {
    * @method find
    * @param {Object} [options={}]
    * @return {Promise<ResourceArray>}
+   *
+   * @todo Write more docs on `options`
    */
   find(options = {}) {
     const { conn, schema } = this;

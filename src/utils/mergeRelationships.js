@@ -1,4 +1,6 @@
 import r from 'rethinkdb';
+import retrieveManyRecords from './retrieveManyRecords';
+import retrieveSingleRecord from './retrieveSingleRecord';
 
 /**
  * Determines which relationships to sideload in the table based off the schema's relationships
@@ -10,6 +12,16 @@ import r from 'rethinkdb';
  *   include: {
  *     pets: true,
  *     company: true,
+ *     blogs: {
+ *       filter: (blog) => blog('title').contains('javascript'),
+ *       pluck: {
+ *         title: true,
+ *         createdOn: true,
+ *       },
+ *       include: { // THIS WON'T WORK (yet)
+ *         author: true
+ *       },
+ *     },
  *   },
  * };
  * ```
@@ -34,16 +46,19 @@ export default (table, schema, options) => {
     ) return {};
 
     const { type, relation } = relationships[field];
-
-    const relatedTable = r.table(type);
     const hasFields = record.hasFields(field);
 
-    const transaction = relation === 'hasMany'
-      ? relatedTable.getAll(r.args(record(field)('id'))).coerceTo('array')
-      : relatedTable.get(record(field)('id'));
+    let relatedTable = r.table(type);
+
+    if (relation === 'hasMany') {
+      relatedTable = relatedTable.getAll(r.args(record(field)('id')));
+      relatedTable = retrieveManyRecords(relatedTable, options.include);
+    } else {
+      relatedTable = retrieveSingleRecord(relatedTable, record(field)('id'), options.include);
+    }
 
     return r.branch(hasFields, {
-      [field]: transaction,
+      [field]: relatedTable,
     }, {});
   })));
 
