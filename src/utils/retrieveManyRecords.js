@@ -28,7 +28,5 @@ export default (table, options) => {
     table = table.orderBy(options.orderBy);
   }
 
-  table = table.coerceTo('array');
-
   return table;
 };

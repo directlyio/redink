@@ -15,7 +15,7 @@ test('should find all users', async t => {
     t.is(users.first().id, '1');
     t.is(users.last().id, '2');
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
 
@@ -31,7 +31,7 @@ test('should find users with options', async t => {
     t.is(users.first().relationship('company').record.name, 'Apple');
     t.is(users.size(), 1);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
 
@@ -44,7 +44,7 @@ test('should find users with native RethinkDB functions (1)', async t => {
     t.truthy(users instanceof ResourceArray);
     t.is(users.size(), 2);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
 
@@ -57,6 +57,6 @@ test('should find users with native RethinkDB functions (2)', async t => {
     t.truthy(users instanceof ResourceArray);
     t.is(users.size(), 2);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });

@@ -72,6 +72,7 @@ export default class Model {
 
     table = retrieveManyRecords(table, options);
     table = mergeRelationships(table, schema, options);
+    table = table.coerceTo('array');
 
     return table.run(conn)
       .then(records => new ResourceArray(conn, schema, records));
@@ -125,6 +126,7 @@ export default class Model {
       relatedTable = relatedTable.getAll(r.args(ids));
       relatedTable = retrieveManyRecords(relatedTable, options);
       relatedTable = mergeRelationships(relatedTable, schema, options);
+      relatedTable = relatedTable.coerceTo('array');
 
       return relatedTable.run(conn)
         .then(records => new ResourceArray(conn, schema, records));

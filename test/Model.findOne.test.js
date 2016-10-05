@@ -11,7 +11,7 @@ test('should find first user', async t => {
 
     t.truthy(user instanceof Resource);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
 
@@ -24,6 +24,6 @@ test('should find billy', async t => {
     t.truthy(user instanceof Resource);
     t.is(user.attribute('name'), 'Billy');
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });

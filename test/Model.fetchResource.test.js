@@ -12,7 +12,7 @@ test('should fetch a single user', async t => {
     t.truthy(user instanceof Resource);
     t.is(user.id, '1');
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
 
@@ -27,7 +27,7 @@ test('should fetch a single user with some sideloaded relationships', async t =>
     t.is(user.relationship('friends').records[0].name, 'Billy');
     t.is(user.relationship('company').record.name, 'Apple');
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
 
@@ -42,6 +42,23 @@ test('should fetch a single user with some fields plucked', async t => {
     t.is(Object.keys(user.relationships).length, 1);
     t.is(user.id, '1');
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
+  }
+});
+
+test('should fetch a single user with nested include', async t => {
+  try {
+    const user = await model('user').fetchResource('1', {
+      include: {
+        friends: {
+          filter: (friend) => friend('name').eq('Invalid name'),
+        },
+      },
+    });
+
+    t.is(Object.keys(user.relationships.friends.records).length, 0);
+    t.is(user.id, '1');
+  } catch (err) {
+    t.fail(err.message);
   }
 });

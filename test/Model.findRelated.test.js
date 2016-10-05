@@ -12,7 +12,7 @@ test('should find the first user\'s friends', async t => {
 
     t.truthy(friends instanceof ResourceArray);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
 
@@ -22,6 +22,6 @@ test('should find the first user\'s company', async t => {
 
     t.truthy(company instanceof Resource);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });

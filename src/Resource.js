@@ -173,6 +173,7 @@ export default class Resource {
       table = table.getAll(r.args(relatedRecords.map(record => record.id)));
       table = retrieveManyRecords(table, options);
       table = mergeRelationships(table, schema, options);
+      table = table.coerceTo('array');
 
       return table.run(conn)
         .then(records => new ResourceArray(conn, schema, records));

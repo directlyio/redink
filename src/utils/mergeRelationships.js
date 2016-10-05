@@ -52,9 +52,14 @@ export default (table, schema, options) => {
 
     if (relation === 'hasMany') {
       relatedTable = relatedTable.getAll(r.args(record(field)('id')));
-      relatedTable = retrieveManyRecords(relatedTable, options.include);
+      relatedTable = retrieveManyRecords(relatedTable, options.include[field]);
+      relatedTable = relatedTable.coerceTo('array');
     } else {
-      relatedTable = retrieveSingleRecord(relatedTable, record(field)('id'), options.include);
+      relatedTable = retrieveSingleRecord(
+        relatedTable,
+        record(field)('id'),
+        options.include[field],
+      );
     }
 
     return r.branch(hasFields, {

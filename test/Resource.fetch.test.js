@@ -19,6 +19,6 @@ test('should fetch a user\'s relationships', async t => {
     t.truthy(employees instanceof ResourceArray);
     t.truthy(employees.first() instanceof Resource);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
