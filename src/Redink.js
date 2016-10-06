@@ -166,6 +166,15 @@ export default class Redink {
       });
   }
 
+  /**
+   * Configures indices where necessary.
+   *
+   * @async
+   * @private
+   * @return {Promise}
+   *
+   * @todo Expand on this documentation.
+   */
   configureIndices() {
     const { conn, indices } = this;
     const { keys } = Object;
