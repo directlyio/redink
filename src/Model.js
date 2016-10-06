@@ -42,7 +42,16 @@ export default class Model {
    * app.model('user').find({
    *   filter: { name: 'Dylan' },
    *   pluck: { password: true },
-   *   include: { pets: true },
+   *   include: {
+   *     pets: {
+   *       filter: (pet) => pet('age').gt(6),
+   *       pluck: {
+   *         favoriteTreat: true,
+   *         color: true,
+   *       },
+   *     },
+   *     company: true,
+   *   },
    * }).then(users => {
    *   // ResourceArray
    * });
@@ -52,6 +61,8 @@ export default class Model {
    * @method find
    * @param {Object} [options={}]
    * @return {Promise<ResourceArray>}
+   *
+   * @todo Write more docs on `options`
    */
   find(options = {}) {
     const { conn, schema } = this;
@@ -61,6 +72,7 @@ export default class Model {
 
     table = retrieveManyRecords(table, options);
     table = mergeRelationships(table, schema, options);
+    table = table.coerceTo('array');
 
     return table.run(conn)
       .then(records => new ResourceArray(conn, schema, records));
@@ -114,6 +126,7 @@ export default class Model {
       relatedTable = relatedTable.getAll(r.args(ids));
       relatedTable = retrieveManyRecords(relatedTable, options);
       relatedTable = mergeRelationships(relatedTable, schema, options);
+      relatedTable = relatedTable.coerceTo('array');
 
       return relatedTable.run(conn)
         .then(records => new ResourceArray(conn, schema, records));

@@ -173,6 +173,7 @@ export default class Resource {
       table = table.getAll(r.args(relatedRecords.map(record => record.id)));
       table = retrieveManyRecords(table, options);
       table = mergeRelationships(table, schema, options);
+      table = table.coerceTo('array');
 
       return table.run(conn)
         .then(records => new ResourceArray(conn, schema, records));
@@ -287,7 +288,7 @@ export default class Resource {
    *
    * ```
    * app.model('user').fetchResource('1').then(user => {
-   *   return user.push('pets', ['1', 2]);
+   *   return user.push('pets', ['1', '2']);
    * }).then(user => {
    *   const newPets = user.relationship('pets'); // will include pets with ids '1' and '2'
    * });

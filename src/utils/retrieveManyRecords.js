@@ -1,5 +1,7 @@
 /* eslint-disable no-param-reassign */
 export default (table, options) => {
+  if (typeof options !== 'object') return table;
+
   if ('filter' in options) {
     table = table.filter(options.filter);
   }
@@ -8,6 +10,12 @@ export default (table, options) => {
     // always pluck the id
     options.pluck.id = true;
     table = table.pluck(options.pluck);
+  }
+
+  if ('without' in options) {
+    // disallow forgoing the id
+    options.without.id = false;
+    table = table.without(options.without);
   }
 
   if ('between' in options) {
@@ -25,8 +33,6 @@ export default (table, options) => {
   if ('orderBy' in options) {
     table = table.orderBy(options.orderBy);
   }
-
-  table = table.coerceTo('array');
 
   return table;
 };

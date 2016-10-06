@@ -19,6 +19,6 @@ test('should map over all users with a synchronous function', async t => {
     t.truthy(names.includes('Billy'));
     t.truthy(users instanceof ResourceArray);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });

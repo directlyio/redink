@@ -21,7 +21,7 @@ test('should fetch a couple of resources', async t => {
     t.truthy(results.user instanceof Resource);
     t.truthy(results.company instanceof Resource);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
 
@@ -40,6 +40,6 @@ test('should fetch a couple of resources with an alias', async t => {
     t.truthy(results.bob instanceof Resource);
     t.truthy(results.companies instanceof ResourceArray);
   } catch (err) {
-    t.fail(err);
+    t.fail(err.message);
   }
 });
