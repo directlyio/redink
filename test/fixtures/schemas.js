@@ -50,3 +50,15 @@ export const user = schema('user', {
     inflection: 'users',
   },
 });
+
+export const book = schema('book', {
+  attributes: {
+    title: true,
+  },
+  relationships: {
+    author: belongsTo('user', 'books'),
+  },
+  meta: {
+    inflection: 'books',
+  },
+});
