@@ -35,7 +35,9 @@ export default class Resource {
     this.meta = record.meta || {};
 
     this.attributes = {};
-    this.relationships = {};
+
+    // FIXME: ensure this clones deeply enough
+    this.relationships = { ...schema.relationships };
 
     Object.keys(record).forEach(field => {
       // hydrate attributes
@@ -157,12 +159,13 @@ export default class Resource {
       return Promise.resolve(null);
     }
 
-    const { conn } = this;
+    const { conn, id } = this;
 
     const {
       type,
       schema,
       relation,
+      inverse,
       record: relatedRecord,
       records: relatedRecords,
     } = this.relationship(relationship);
@@ -170,7 +173,15 @@ export default class Resource {
     let table = r.table(type);
 
     if (relation === 'hasMany') {
-      table = table.getAll(r.args(relatedRecords.map(record => record.id)));
+      if (
+        inverse.relation === 'belongsTo' ||
+        inverse.relation === 'hasOne'
+      ) {
+        table = table.getAll(id, { index: inverse.field });
+      } else {
+        table = table.getAll(r.args(relatedRecords.map(record => record.id)));
+      }
+
       table = retrieveManyRecords(table, options);
       table = mergeRelationships(table, schema, options);
       table = table.coerceTo('array');

@@ -116,14 +116,22 @@ export default class Model {
    */
   findRelated(id, relationship, options = {}) {
     const { conn, schema, schema: { type: parentType } } = this;
-    const { type: relatedType, relation } = schema.relationships[relationship];
+    const { type: relatedType, relation, inverse } = schema.relationships[relationship];
 
     let relatedTable = r.table(relatedType);
     const parentTable = r.table(parentType);
     const ids = parentTable.get(id)(relationship)('id');
 
     if (relation === 'hasMany') {
-      relatedTable = relatedTable.getAll(r.args(ids));
+      if (
+        inverse.relation === 'belongsTo' ||
+        inverse.relation === 'hasOne'
+      ) {
+        relatedTable = relatedTable.getAll(id, { index: inverse.field });
+      } else {
+        relatedTable = relatedTable.getAll(r.args(ids));
+      }
+
       relatedTable = retrieveManyRecords(relatedTable, options);
       relatedTable = mergeRelationships(relatedTable, schema, options);
       relatedTable = relatedTable.coerceTo('array');
