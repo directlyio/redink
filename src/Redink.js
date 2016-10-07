@@ -32,6 +32,7 @@ export default class Redink {
     this.schemas = schemas;
     this.port = port;
 
+    this.indices = {};
     this.models = {};
   }
 
@@ -96,6 +97,8 @@ export default class Redink {
     keys(newSchemas).forEach(schema => {
       const { relationships } = newSchemas[schema];
 
+      if (!types.includes(schema)) types.push(schema);
+
       keys(relationships).forEach(field => {
         if (typeof relationships[field] !== 'function') {
           throw new TypeError(
@@ -116,19 +119,24 @@ export default class Redink {
       keys(relationships).forEach(field => {
         const { type } = relationships[field];
         hydrateInverse(newSchemas, type);
-
-        if (!types.includes(type)) types.push(type);
       });
     });
 
-    // add schema key to every schema
+    // add schema key to every schema and build the indices object
     keys(newSchemas).forEach(schema => {
       const { relationships } = newSchemas[schema];
 
       keys(relationships).forEach(field => {
         const { type } = relationships[field];
+        const { relation, inverse } = newSchemas[schema].relationship(field);
 
         newSchemas[schema].relationships[field].schema = newSchemas[type];
+
+        if (relation === 'hasMany' &&
+          (inverse.relation === 'belongsTo' || inverse.relation === 'hasOne')
+        ) {
+          this.indices[`${type}.${inverse.field}`] = true;
+        }
       });
     });
 
@@ -141,8 +149,10 @@ export default class Redink {
       .then(tables => {
         const missingTables = types.filter(type => !tables.includes(type));
 
-        return Promise.all(
-          missingTables.map(table => r.tableCreate(table).run(conn))
+        return Promise.props(
+          missingTables.reduce((prev, next) => ({
+            [next]: r.tableCreate(next).run(conn),
+          }), {})
         );
       })
 
@@ -152,8 +162,48 @@ export default class Redink {
           this.models[type] = new Model(conn, type, newSchemas[type]);
         });
 
-        return this.models;
+        return this.configureIndices();
       });
+  }
+
+  /**
+   * Configures indices where necessary.
+   *
+   * @async
+   * @private
+   * @return {Promise}
+   *
+   * @todo Expand on this documentation.
+   */
+  configureIndices() {
+    const { conn, indices } = this;
+    const { keys } = Object;
+
+    return Promise.props(
+      keys(indices).reduce((prev, next) => {
+        const [table, field] = next.split('.');
+
+        console.log(`Configuring '${field}' index on table '${table}'...`);
+
+        return {
+          ...prev,
+          [table]: r.table(table).indexCreate(field, r.row(field)('id')).run(conn),
+        };
+      }, {})
+    ).then(tables => Promise.props(
+      keys(tables).reduce((prev, next) => ({
+        ...prev,
+        [next]: r.table(next).indexWait().run(conn),
+      }), {})
+    )).then(tables => {
+      Object.keys(tables).forEach(table => {
+        tables[table].forEach(index => {
+          console.log(
+            `Index '${index.index}' on table '${table}' status: ${index.ready ? 'ready' : 'error'}.`
+          );
+        });
+      });
+    });
   }
 
   /**

@@ -9,10 +9,6 @@ export default {
         id: '2',
         _archived: false,
       }],
-      blogs: [{
-        id: '1',
-        _archived: false,
-      }],
       company: {
         id: '1',
         _archived: false,
@@ -45,10 +41,6 @@ export default {
     [types.COMPANY_TABLE]: [{
       id: '1',
       name: 'Apple',
-      employees: [{
-        id: '1',
-        _archived: false,
-      }],
       address: {
         id: '1',
         _archived: false,

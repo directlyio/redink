@@ -16,6 +16,16 @@ test('should find the first user\'s friends', async t => {
   }
 });
 
+test('should find the first user\'s blogs', async t => {
+  try {
+    const blogs = await model('user').findRelated('1', 'blogs');
+
+    t.truthy(blogs instanceof ResourceArray);
+  } catch (err) {
+    t.fail(err.message);
+  }
+});
+
 test('should find the first user\'s company', async t => {
   try {
     const company = await model('user').findRelated('1', 'company');
