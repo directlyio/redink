@@ -47,15 +47,19 @@ export default class Resource {
       // hydrate relationships
       if (schema.hasRelationship(field)) {
         const relationship = schema.relationship(field);
-        const recordsOrRecord = relationship.relation === 'hasMany'
-          ? 'records'
-          : 'record';
+        const relation = relationship.relation;
+        const inverseRelation = relationship.inverse.relation;
 
         this.relationships[field] = {
           ...relationship,
-          [recordsOrRecord]: record[field],
         };
 
+        if (relation === 'hasMany') {
+          if (inverseRelation === 'hasMany') this.relationships[field].records = record[field];
+          else return;
+        }
+
+        this.relationships[field].record = record[field];
         return;
       }
     });
@@ -85,15 +89,9 @@ export default class Resource {
    * app.model('user').fetchResource('1').then(user => {
    *   user.relationship('pets') === {
    *     type: 'animal',
+   *     field: 'pets',
    *     schema: Schema,
    *     relation: 'hasMany',
-   *     records: [{
-   *       id: '1',
-   *       _archived: false,
-   *     }, {
-   *       id: '2',
-   *       _archived: false,
-   *     }],
    *     inverse: {
    *       type: 'user',
    *       relation: 'belongsTo',
@@ -101,13 +99,36 @@ export default class Resource {
    *     },
    *   }
    *
+   *   user.relationship('teachers') === {
+   *     type: 'teacher',
+   *     field: 'teachers',
+   *     schema: Schema,
+   *     relation: 'hasMany',
+   *     records: [{
+   *       id: '1',
+   *       _archived: false,
+   *       _related: true,
+   *     }, {
+   *       id: '2',
+   *       _archived: false,
+   *       _related: true,
+   *     }],
+   *     inverse: {
+   *       type: 'user',
+   *       relation: 'hasMany',
+   *       field: 'students',
+   *     },
+   *   }
+   *
    *   user.relationship('company') === {
    *     type: 'company',
+   *     field: 'company',
    *     schema: Schema,
    *     relation: 'hasOne',
    *     record: {
-   *       id: '1',
+   *       id: '2',
    *       _archived: false,
+   *       _related: true,
    *     },
    *     inverse: {
    *       type: 'user',
