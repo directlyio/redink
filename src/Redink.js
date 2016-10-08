@@ -41,7 +41,7 @@ export default class Redink {
   }
 
   /**
-   * Connects to the RethinkDB database and registers the schemas.
+   * Connects to the RethinkDB database, registers the schemas, and configures indices.
    *
    * @async
    * @method connect
@@ -57,10 +57,13 @@ export default class Redink {
     if (this.user) options.user = this.user;
     if (this.password) options.password = this.password;
 
-    return r.connect(options).then(conn => {
-      this.conn = conn;
-      return this.registerSchemas(this.schemas);
-    });
+    const registerSchemas = () => this.registerSchemas();
+    const configureIndices = () => this.configureIndices();
+
+    return r.connect(options)
+      .then(conn => (this.conn = conn))
+      .then(registerSchemas)
+      .then(configureIndices);
   }
 
   /**
@@ -88,12 +91,10 @@ export default class Redink {
    * @method registerSchemas
    * @param {Object} schemas - Redink schemas.
    * @return {Promise<Object>}
-   *
-   * @todo Create indices where necessary.
    */
-  registerSchemas(schemas) {
+  registerSchemas() {
     const { keys } = Object;
-    const { conn, db } = this;
+    const { conn, schemas, db } = this;
     const types = [];
 
     const newSchemas = { ...schemas };
@@ -152,7 +153,7 @@ export default class Redink {
       });
     });
 
-    this.schemas = newSchemas;
+    this.schemas = Object.freeze(newSchemas);
 
     // create missing tables
     return r.db(db).tableList().run(conn)
@@ -173,8 +174,6 @@ export default class Redink {
         types.forEach(type => {
           this.models[type] = new Model(conn, type, newSchemas[type]);
         });
-
-        return this.configureIndices();
       });
   }
 
@@ -182,6 +181,7 @@ export default class Redink {
    * Determines which indices are missing on `table` and creates them.
    *
    * @private
+   * @method reconcileMissingTableIndices
    * @param {String} table - The table to reconcile missing indices on.
    * @return {Promise<Array>}
    */
@@ -235,8 +235,6 @@ export default class Redink {
    * @return {Promise}
    *
    * @todo Expand on this documentation.
-   * @todo Add verbose check for logging.
-   * @todo Add check for existing indices
    */
   configureIndices() {
     const { indices, verbose } = this;
@@ -247,10 +245,10 @@ export default class Redink {
         ...prev,
         [next]: this.reconcileMissingTableIndices(next),
       }), {})
-    ).then(tables => {
+    ).then(reconciledTables => {
       if (verbose) {
-        keys(tables).forEach(table => {
-          tables[table].forEach(index => {
+        keys(reconciledTables).forEach(table => {
+          reconciledTables[table].forEach(index => {
             // eslint-disable-next-line
             console.log(
               `Index ${chalk.blue(index.index)} on table ${chalk.blue(table)} status: ` +
