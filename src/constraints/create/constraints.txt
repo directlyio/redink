@@ -1,0 +1,64 @@
+NOTE: "valid" = (1) record exists and (2) that record's `meta._archived` is set to false.
+
+hasMany --> hasMany
+
+- The original's relationship array must either be (A) or (B)
+  (A) an empty array
+  (B) an array of "valid" ids
+
+NOTE: The original's relationship is not actually stored.
+hasMany --> hasOne
+
+- The original's relationship must be (A) or (B)
+  (A) null
+  (B) an array of "valid" ids
+
+- The inverse's relationship must either be (A) or (B) or (C)
+  (A) empty
+  (B) a resourcePointer with its _archived flag set to true
+  (C) a resourcePointer with its _related flag set to false
+
+NOTE: The original's relationship is not actually stored.
+hasMany --> belongsTo
+
+- The original's relationship array must be null or empty.
+
+hasOne --> hasOne
+
+- The original's relationship must either be (A) or (B)
+  (A) empty
+  (B) point to a "valid" id
+
+- The inverse's relationship must either be (A) or (B) or (C)
+  (A) empty
+  (B) a resourcePointer with its _archived flag set to true
+  (C) a resourcePointer with its _related flag set to false
+
+NOTE: The inverse's relationship is not actually stored.
+hasOne --> hasMany
+
+- The original's relationship must either be (A) or (B)
+  (A) empty
+  (B) point to a "valid" id
+
+hasOne --> belongsTo
+
+- The original's relationship must be null or empty.
+
+NOTE: The inverse's relationship is not actually stored.
+belongsTo --> hasMany
+
+- The original's relationship must be (1) and (2)
+  (1) be set
+  (2) point to "valid" id
+
+belongsTo --> hasOne
+
+- The original's relationship must be (1) and (2)
+  (1) be set
+  (2) point to "valid" id
+
+- The inverse's relationship must either be (A) or (B) or (C)
+  (A) empty
+  (B) a resourcePointer with its _archived flag set to true
+  (C) a resourcePointer with its _related flag set to false
