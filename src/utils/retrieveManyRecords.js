@@ -6,6 +6,10 @@ export default (table, options) => {
     table = table.filter(options.filter);
   }
 
+  if ('ids' in options) {
+    table = table.getAll(options.ids.join());
+  }
+
   if ('pluck' in options) {
     // always pluck the id
     options.pluck.id = true;
