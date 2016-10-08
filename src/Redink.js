@@ -179,6 +179,55 @@ export default class Redink {
   }
 
   /**
+   * Determines which indices are missing on `table` and creates them.
+   *
+   * @private
+   * @param {String} table - The table to reconcile missing indices on.
+   * @return {Promise<Array>}
+   */
+  reconcileMissingTableIndices(table) {
+    const { conn, indices, verbose } = this;
+
+    if (!indices[table]) {
+      throw new Error(
+        `Tried to reconcile the missing indices on table '${table}', but '${table}' was not ` +
+        'in the \'indices\' registry.'
+      );
+    }
+
+    const fieldsToIndex = Object.keys(indices[table]);
+
+    return r.table(table).indexList().run(conn)
+
+      // determine which indices are missing and create them
+      .then(existingIndices => {
+        const missingIndices = fieldsToIndex.filter(
+          field => !existingIndices.includes(field)
+        );
+
+        if (verbose) {
+          const formattedMissingIndices = missingIndices.toString().split(',').join(', ');
+
+          // eslint-disable-next-line
+          console.log(
+            `Configuring the ${chalk.blue(formattedMissingIndices)} ` +
+            `${formattedMissingIndices.length > 1 ? 'index' : 'indices'} on table ` +
+            `${chalk.blue(table)}...`
+          );
+        }
+
+        return Promise.all(
+          missingIndices.map(index =>
+            r.table(table).indexCreate(index, r.row(index)('id')).run(conn)
+          )
+        );
+      })
+
+      // wait for all the indices on `table` to finish creating
+      .then(() => r.table(table).indexWait().run(conn));
+  }
+
+  /**
    * Configures indices where necessary.
    *
    * @async
@@ -190,45 +239,17 @@ export default class Redink {
    * @todo Add check for existing indices
    */
   configureIndices() {
-    const { conn, indices, verbose } = this;
+    const { indices, verbose } = this;
     const { keys } = Object;
 
     return Promise.props(
-      keys(indices).reduce((prev, next) => {
-        const fields = keys(indices[next]);
-
-        return {
-          ...prev,
-          [next]: r.table(next).indexList().run(conn)
-            .then(existingIndices => {
-              const missingIndices = fields.filter(field => !existingIndices.includes(field));
-
-              if (verbose) {
-                const formattedMissingIndices = missingIndices.toString().split(',').join(', ');
-                // eslint-disable-next-line
-                console.log(
-                  `Configuring the ${chalk.blue(formattedMissingIndices)} ` +
-                  `${formattedMissingIndices.length > 1 ? 'index' : 'indices'} on table ` +
-                  `${chalk.blue(next)}...`
-                );
-              }
-
-              return Promise.all(
-                missingIndices.map(index =>
-                  r.table(next).indexCreate(index, r.row(index)('id')).run(conn)
-                )
-              );
-            }),
-        };
-      }, {})
-    ).then(tables => Promise.props(
-      keys(tables).reduce((prev, next) => ({
+      keys(indices).reduce((prev, next) => ({
         ...prev,
-        [next]: r.table(next).indexWait().run(conn),
+        [next]: this.reconcileMissingTableIndices(next),
       }), {})
-    )).then(tables => {
+    ).then(tables => {
       if (verbose) {
-        Object.keys(tables).forEach(table => {
+        keys(tables).forEach(table => {
           tables[table].forEach(index => {
             // eslint-disable-next-line
             console.log(
