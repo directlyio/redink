@@ -1,6 +1,7 @@
 import r from 'rethinkdb';
 import Resource from './Resource';
 import ResourceArray from './ResourceArray';
+import { isCreateCompliant } from './constraints/create';
 
 import {
   mergeRelationships,
@@ -202,21 +203,33 @@ export default class Model {
     let createdRecordId;
     let createdResource;
 
-    return r.table(type).insert(record).run(conn)
+    const createRecord = (compliant) => {
+      if (!compliant) {
+        throw new Error(
+          'You tried to create a record whose relationships are invalid.'
+        );
+      }
 
-      // retrieve the record that was just created
-      .then(({ generated_keys: keys }) => {
-        createdRecordId = keys[0];
-        return retrieveSingleRecord(type, createdRecordId, options).run(conn);
-      })
+      return r.table(type).insert(record).run(conn)
 
-      // create the resource and sync its relationships
-      .then(createdRecord => {
-        createdResource = new Resource(conn, schema, createdRecord);
-        return createdResource.syncRelationships();
-      })
+        // retrieve the record that was just created
+        .then(({ generated_keys: keys }) => {
+          createdRecordId = keys[0];
+          return retrieveSingleRecord(type, createdRecordId, options).run(conn);
+        })
 
-      // return the resource
-      .then(() => createdResource);
+        // create the resource and sync its relationships
+        .then(createdRecord => {
+          createdResource = new Resource(conn, schema, createdRecord);
+          return createdResource.syncRelationships();
+        })
+
+        // return the resource
+        .then(() => createdResource);
+    };
+
+    // check record and it's relationships for Redink constraints
+    return isCreateCompliant(record, schema, conn)
+      .then(createRecord);
   }
 }

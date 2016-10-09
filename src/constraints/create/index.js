@@ -1,42 +1,35 @@
-import { checkChecks } from './utils';
+import {
+  isHasManyCompliant,
+  isHasOneCompliant,
+  isBelongsToCompliant,
+} from './utils';
 
-export default (record, schema) => (
-  schema.relationships.map(relationship => {
-    if (!record.includes(relationship.field)) return true;
+export default (record, schema, conn) => {
+  const isTrue = check => (check === true);
+  const checkPass = response => response.every(isTrue);
 
-    const { relation, inverse } = relationship;
-    const inverseRelation = inverse.relation;
+  return Promise
+    .all(schema.relationships.map(relationship => {
+      if (!record.includes(relationship.field)) return true;
 
-    switch (`${relation} -> ${inverseRelation}`) {
-      case 'hasMany -> hasMany':
-        const checks = [];
-        return checkChecks(checks, options)
-          .then(didPass);
+      const { relation, inverse } = relationship;
 
-        break;
-      case 'hasMany -> hasOne':
+      switch (relation) {
+        case 'hasMany':
+          // check relationship with original relation `hasMany`
+          return isHasManyCompliant(inverse, record[relationship], conn);
 
-        break;
-      case 'hasMany -> belongsTo':
+        case 'hasOne':
+          // check relationship with original relation `hasOne`
+          return isHasOneCompliant(inverse, record[relationship], conn);
 
-        break;
-      case 'hasOne -> hasOne':
+        case 'belongsTo':
+          // check relationship with original relation `belongsTo`
+          return isBelongsToCompliant(inverse, record[relationship], conn);
 
-        break;
-      case 'hasOne -> hasMany':
-
-        break;
-      case 'hasOne -> belongsTo':
-
-        break;
-      case 'belongsTo -> hasMany':
-
-        break;
-      case 'belongsTo -> hasOne':
-
-        break;
-      default:
-        throw new Error(`Invalid relationship pair '${relation}' -> '${inverseRelation}'`);
-    }
-  })
-);
+        default:
+          throw new Error(`Invalid relationship of type '${relation}'`);
+      }
+    }))
+    .then(checkPass);
+};
