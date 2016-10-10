@@ -57,13 +57,10 @@ export default class Redink {
     if (this.user) options.user = this.user;
     if (this.password) options.password = this.password;
 
-    const registerSchemas = () => this.registerSchemas();
-    const configureIndices = () => this.configureIndices();
-
     return r.connect(options)
       .then(conn => (this.conn = conn))
-      .then(registerSchemas)
-      .then(configureIndices);
+      .then(::this.registerSchemas)
+      .then(::this.configureIndices);
   }
 
   /**
@@ -166,7 +163,7 @@ export default class Redink {
       // register the Models
       .then(() => {
         types.forEach(type => {
-          this.models[type] = new Model(conn, type, newSchemas[type]);
+          this.models[type] = new Model(conn, type, this.schemas[type]);
         });
       });
   }
