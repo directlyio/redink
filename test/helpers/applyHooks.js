@@ -17,6 +17,7 @@ export default (test, data = initData) => {
         port,
         db: 'test',
         host: 'localhost',
+        verbose: true,
       })
       .then(() => {
         t.truthy(redink().instance().conn, 'connection is present');

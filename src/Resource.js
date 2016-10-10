@@ -4,6 +4,7 @@ import ResourceArray from './ResourceArray';
 
 import {
   mergeRelationships,
+  requiresIndex,
   retrieveManyRecords,
   retrieveSingleRecord,
 } from './utils';
@@ -185,10 +186,7 @@ export default class Resource {
     let table = r.table(type);
 
     if (relation === 'hasMany') {
-      if (
-        inverse.relation === 'belongsTo' ||
-        inverse.relation === 'hasOne'
-      ) {
+      if (requiresIndex(relation, inverse.relation)) {
         table = table.getAll(id, { index: inverse.field });
       } else {
         table = table.getAll(r.args(relatedRecords.map(record => record.id)));

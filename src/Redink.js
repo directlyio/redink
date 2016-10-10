@@ -1,8 +1,9 @@
 import r from 'rethinkdb';
 import Promise from 'bluebird';
+import chalk from 'chalk';
 import Model from './Model';
 import ModelArray from './ModelArray';
-import { destructureAlias, hydrateInverse } from './utils';
+import { destructureAlias, hydrateInverse, requiresIndex } from './utils';
 
 const DEFAULT_RETHINKDB_PORT = 28015;
 
@@ -15,6 +16,7 @@ export default class Redink {
    * @param {String} [options.user='']
    * @param {String} [options.password='']
    * @param {Object} [options.schemas={}]
+   * @param {Boolean} [options.verbse=false]
    * @param {Number} [options.port=28015]
    */
   constructor({
@@ -23,6 +25,7 @@ export default class Redink {
     user = '',
     password = '',
     schemas = {},
+    verbose = false,
     port = DEFAULT_RETHINKDB_PORT,
   }) {
     this.db = db;
@@ -30,6 +33,7 @@ export default class Redink {
     this.user = user;
     this.password = password;
     this.schemas = schemas;
+    this.verbose = verbose;
     this.port = port;
 
     this.indices = {};
@@ -37,7 +41,7 @@ export default class Redink {
   }
 
   /**
-   * Connects to the RethinkDB database and registers the schemas.
+   * Connects to the RethinkDB database, registers the schemas, and configures indices.
    *
    * @async
    * @method connect
@@ -53,10 +57,10 @@ export default class Redink {
     if (this.user) options.user = this.user;
     if (this.password) options.password = this.password;
 
-    return r.connect(options).then(conn => {
-      this.conn = conn;
-      return this.registerSchemas(this.schemas);
-    });
+    return r.connect(options)
+      .then(conn => (this.conn = conn))
+      .then(::this.registerSchemas)
+      .then(::this.configureIndices);
   }
 
   /**
@@ -83,64 +87,64 @@ export default class Redink {
    * @method registerSchemas
    * @param {Object} schemas - Redink schemas.
    * @return {Promise<Object>}
-   *
-   * @todo Create indices where necessary.
    */
-  registerSchemas(schemas) {
-    const { keys } = Object;
-    const { conn, db } = this;
+  registerSchemas() {
+    const { conn, schemas, db, visitSchemas } = this;
     const types = [];
 
     const newSchemas = { ...schemas };
 
-    // invoke all relationship functions, i.e. all 'hasMany', 'hasOne', and 'belongsTo' functions
-    keys(newSchemas).forEach(schema => {
-      const { relationships } = newSchemas[schema];
-
-      if (!types.includes(schema)) types.push(schema);
-
-      keys(relationships).forEach(field => {
-        if (typeof relationships[field] !== 'function') {
+    /**
+     * First pass: visit each schema and invoke every `hasMany`, `hasOne`, and `belongsTo`
+     * relationship function. Along the way, add each schema type to `types`.
+     */
+    visitSchemas(newSchemas, {
+      enterSchema: ({ type }) => !types.includes(type) && types.push(type),
+      enterRelationship: ({ type, field, relationship }) => {
+        if (typeof relationship !== 'function') {
           throw new TypeError(
-            `Tried registering the '${schema}' schema's '${field}' relationship, but it wasn't a ` +
+            `Tried registering the '${type}' schema's '${field}' relationship, but it wasn't a ` +
             'function. Please use \'hasMany\', \'belongsTo\', or \'hasOne\' from ' +
             '\'redink/schema\'.'
           );
         }
 
-        newSchemas[schema].relationships[field] = relationships[field](field);
-      });
+        newSchemas[type].relationships[field] = relationship(field);
+      },
     });
 
-    // hydrate inverse relationships of the newly created schemas object
-    keys(newSchemas).forEach(schema => {
-      const { relationships } = newSchemas[schema];
-
-      keys(relationships).forEach(field => {
-        const { type } = relationships[field];
-        hydrateInverse(newSchemas, type);
-      });
+    /**
+     * Second pass: hydrate every inverse relationship in the schema graph.
+     */
+    visitSchemas(newSchemas, {
+      enterRelationship: ({ relationship: { type } }) => hydrateInverse(newSchemas, type),
     });
 
-    // add schema key to every schema and build the indices object
-    keys(newSchemas).forEach(schema => {
-      const { relationships } = newSchemas[schema];
+    /**
+     * Third pass: add a schema key to every relationship and build up the indices registry.
+     */
+    visitSchemas(newSchemas, {
+      enterRelationship: ({ type, field, relationship }) => {
+        const {
+          relation,
+          type: relatedType,
+          inverse: {
+            relation: inverseRelation,
+            field: inverseField,
+          },
+        } = relationship;
 
-      keys(relationships).forEach(field => {
-        const { type } = relationships[field];
-        const { relation, inverse } = newSchemas[schema].relationship(field);
+        newSchemas[type].relationships[field].schema = newSchemas[relatedType];
 
-        newSchemas[schema].relationships[field].schema = newSchemas[type];
-
-        if (relation === 'hasMany' &&
-          (inverse.relation === 'belongsTo' || inverse.relation === 'hasOne')
-        ) {
-          this.indices[`${type}.${inverse.field}`] = true;
+        if (requiresIndex(relation, inverseRelation)) {
+          if (!this.indices[relatedType]) this.indices[relatedType] = {};
+          this.indices[relatedType][inverseField] = true;
         }
-      });
+      },
     });
 
-    this.schemas = newSchemas;
+    // ensure that the schemas will never be mutated
+    this.schemas = Object.freeze(newSchemas);
 
     // create missing tables
     return r.db(db).tableList().run(conn)
@@ -159,11 +163,91 @@ export default class Redink {
       // register the Models
       .then(() => {
         types.forEach(type => {
-          this.models[type] = new Model(conn, type, newSchemas[type]);
+          this.models[type] = new Model(conn, type, this.schemas[type]);
         });
-
-        return this.configureIndices();
       });
+  }
+
+  /**
+   * Walks through each schema, and calls `actions.enterSchema` upon entering each schema and calls
+   * `actions.enterRelationship` upon entering each relationship of that schema.
+   *
+   * @param {Object} schemas
+   * @param {Object} [actions={}]
+   * @param {Function} [actions.enterSchema]
+   * @param {Function} [actions.enterRelationship]
+   */
+  visitSchemas(schemas, actions = {}) {
+    const { keys } = Object;
+
+    keys(schemas).forEach(type => {
+      const schema = schemas[type];
+
+      if (typeof actions.enterSchema === 'function') {
+        actions.enterSchema({ type, schema });
+      }
+
+      keys(schema.relationships).forEach(field => {
+        if (typeof actions.enterRelationship === 'function') {
+          actions.enterRelationship({
+            relationship: schema.relationships[field],
+            type,
+            schema,
+            field,
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Determines which indices are missing on `table` and creates them.
+   *
+   * @private
+   * @method reconcileMissingTableIndices
+   * @param {String} table - The table to reconcile missing indices on.
+   * @return {Promise<Array>}
+   */
+  reconcileMissingTableIndices(table) {
+    const { conn, indices, verbose } = this;
+
+    if (!indices[table]) {
+      throw new Error(
+        `Tried to reconcile the missing indices on table '${table}', but '${table}' was not ` +
+        'in the \'indices\' registry.'
+      );
+    }
+
+    const fieldsToIndex = Object.keys(indices[table]);
+
+    return r.table(table).indexList().run(conn)
+
+      // determine which indices are missing and create them
+      .then(existingIndices => {
+        const missingIndices = fieldsToIndex.filter(
+          field => !existingIndices.includes(field)
+        );
+
+        if (verbose) {
+          const formattedMissingIndices = missingIndices.toString().split(',').join(', ');
+
+          // eslint-disable-next-line
+          console.log(
+            `Configuring the ${chalk.blue(formattedMissingIndices)} ` +
+            `${formattedMissingIndices.length > 1 ? 'index' : 'indices'} on table ` +
+            `${chalk.blue(table)}...`
+          );
+        }
+
+        return Promise.all(
+          missingIndices.map(index =>
+            r.table(table).indexCreate(index, r.row(index)('id')).run(conn)
+          )
+        );
+      })
+
+      // wait for all the indices on `table` to finish creating
+      .then(() => r.table(table).indexWait().run(conn));
   }
 
   /**
@@ -176,33 +260,26 @@ export default class Redink {
    * @todo Expand on this documentation.
    */
   configureIndices() {
-    const { conn, indices } = this;
+    const { indices, verbose } = this;
     const { keys } = Object;
 
     return Promise.props(
-      keys(indices).reduce((prev, next) => {
-        const [table, field] = next.split('.');
-
-        console.log(`Configuring '${field}' index on table '${table}'...`);
-
-        return {
-          ...prev,
-          [table]: r.table(table).indexCreate(field, r.row(field)('id')).run(conn),
-        };
-      }, {})
-    ).then(tables => Promise.props(
-      keys(tables).reduce((prev, next) => ({
+      keys(indices).reduce((prev, next) => ({
         ...prev,
-        [next]: r.table(next).indexWait().run(conn),
+        [next]: this.reconcileMissingTableIndices(next),
       }), {})
-    )).then(tables => {
-      Object.keys(tables).forEach(table => {
-        tables[table].forEach(index => {
-          console.log(
-            `Index '${index.index}' on table '${table}' status: ${index.ready ? 'ready' : 'error'}.`
-          );
+    ).then(reconciledTables => {
+      if (verbose) {
+        keys(reconciledTables).forEach(table => {
+          reconciledTables[table].forEach(index => {
+            // eslint-disable-next-line
+            console.log(
+              `Index ${chalk.blue(index.index)} on table ${chalk.blue(table)} status: ` +
+              `${index.ready ? chalk.green('ready') : chalk.red('error')}.`
+            );
+          });
         });
-      });
+      }
     });
   }
 
