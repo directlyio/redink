@@ -86,7 +86,6 @@ export default class Redink {
    * relationships where necessary. After finishing the graph, it ensures that all proper tables are
    * created with each schema `type` as the table name.
    *
-   *
    * @private
    * @method registerSchemas
    * @param {Object} schemas - Redink schemas.
@@ -98,10 +97,12 @@ export default class Redink {
 
     const newSchemas = { ...schemas };
 
+    /**
+     * First pass: visit each schema and invoke every `hasMany`, `hasOne`, and `belongsTo`
+     * relationship function. Along the way, add each schema type to `types`.
+     */
     visitSchemas(newSchemas, {
-      enterSchema: ({ type, schema }) => {
-        if (!types.includes(schema)) types.push(type);
-      },
+      enterSchema: ({ type }) => !types.includes(type) && types.push(type),
       enterRelationship: ({ type, field, relationship }) => {
         if (typeof relationship !== 'function') {
           throw new TypeError(
@@ -115,12 +116,16 @@ export default class Redink {
       },
     });
 
+    /**
+     * Second pass: hydrate every inverse relationship in the schema graph.
+     */
     visitSchemas(newSchemas, {
-      enterRelationship: ({ relationship: { type } }) => {
-        hydrateInverse(newSchemas, type);
-      },
+      enterRelationship: ({ relationship: { type } }) => hydrateInverse(newSchemas, type),
     });
 
+    /**
+     * Third pass: add a schema key to every relationship and build up the indices registry.
+     */
     visitSchemas(newSchemas, {
       enterRelationship: ({ type, field, relationship }) => {
         const {
@@ -141,6 +146,7 @@ export default class Redink {
       },
     });
 
+    // ensure that the schemas will never be mutated
     this.schemas = Object.freeze(newSchemas);
 
     // create missing tables
