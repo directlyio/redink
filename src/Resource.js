@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 import r from 'rethinkdb';
 import ResourceArray from './ResourceArray';
 
@@ -211,10 +212,30 @@ export default class Resource {
   /**
    * Updates this resource's attributes based on `attributes`.
    *
-   * @param {Object} attributes
+   * @param {Object} newAttributes
    * @return {Promise<Resource>}
    */
-  update(attributes) {
+  update(fields, options) {
+    const { schema, id, conn } = this;
+    const { type } = schema;
+
+    let table = r.table(type);
+
+    Object.keys(fields).forEach(field => {
+      if (!schema.hasAttribute(field)) delete fields.field;
+    });
+
+    const handleUpdate = () => {
+      table = retrieveSingleRecord(table, id, options);
+      return table.run(conn);
+    };
+
+    return table
+      .get(id)
+      .update(fields)
+      .run(conn)
+      .then(handleUpdate)
+      .then(record => new Resource(conn, schema, record));
   }
 
   /**

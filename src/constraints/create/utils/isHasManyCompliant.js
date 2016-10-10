@@ -1,7 +1,8 @@
 import { checkValidIds, checkManyInverseHasOne } from '../../checks';
 
-export default (inverse, data, conn) => {
-  const { relation, type, field } = inverse;
+export default (relationship, data, conn) => {
+  const { inverse, type } = relationship;
+  const { relation, field } = inverse;
 
   if (data === []) return true;
 

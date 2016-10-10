@@ -37,15 +37,15 @@ export default (record, schema, conn) => {
       switch (relation) {
         case 'hasMany':
           // check relationship with original relation `hasMany`
-          return isHasManyCompliant(inverse, data, conn);
+          return isHasManyCompliant(relationship, data, conn);
 
         case 'hasOne':
           // check relationship with original relation `hasOne`
-          return isHasOneCompliant(inverse, data, conn);
+          return isHasOneCompliant(relationship, data, conn);
 
         case 'belongsTo':
           // check relationship with original relation `belongsTo`
-          return isBelongsToCompliant(inverse, data, conn);
+          return isBelongsToCompliant(relationship, data, conn);
 
         default:
           throw new Error(`Invalid relationship of type '${relation}'`);
