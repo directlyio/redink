@@ -1,7 +1,7 @@
 import r from 'rethinkdb';
 import Resource from './Resource';
 import ResourceArray from './ResourceArray';
-import { isCreateCompliant } from './constraints/create';
+import isCreateCompliant from './constraints/create';
 
 import {
   mergeRelationships,
@@ -254,14 +254,16 @@ export default class Model {
 
         // retrieve the record that was just created
         .then(({ generated_keys: keys }) => {
+          const table = r.table(type);
           createdRecordId = keys[0];
-          return retrieveSingleRecord(type, createdRecordId, options).run(conn);
+
+          return retrieveSingleRecord(table, createdRecordId, options).run(conn);
         })
 
         // create the resource and reconcile its relationships
         .then(createdRecord => {
           createdResource = new Resource(conn, schema, createdRecord);
-          return createdResource.reconcile();
+          return createdResource.syncRelationships();
         })
 
         // return the resource

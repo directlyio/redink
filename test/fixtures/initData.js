@@ -13,7 +13,7 @@ export default {
         id: '1',
         _archived: false,
       },
-      meta: {
+      _meta: {
         _archived: false,
       },
     }, {
@@ -23,7 +23,7 @@ export default {
         id: '1',
         _archived: false,
       }],
-      meta: {
+      _meta: {
         _archived: false,
       },
     }],
@@ -34,7 +34,7 @@ export default {
         id: '1',
         _archived: false,
       },
-      meta: {
+      _meta: {
         _archived: false,
       },
     }],
@@ -45,7 +45,7 @@ export default {
         id: '1',
         _archived: false,
       },
-      meta: {
+      _meta: {
         _archived: false,
       },
     }],
@@ -56,7 +56,7 @@ export default {
         id: '1',
         _archived: false,
       },
-      meta: {
+      _meta: {
         _archived: false,
       },
     }],

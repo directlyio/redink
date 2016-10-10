@@ -31,7 +31,7 @@ class Schema {
 
     this.type = type;
     this.attributes = schema.attributes || {};
-    this.meta = schema.meta || {};
+    this._meta = schema._meta || {};
     this.relationships = schema.relationships || {};
   }
 
@@ -45,6 +45,10 @@ class Schema {
 
   relationship(relationship) {
     return this.relationships[relationship] || {};
+  }
+
+  mapRelationships(fn) {
+    return this.relationships.map(fn);
   }
 }
 
