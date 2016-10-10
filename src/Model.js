@@ -7,6 +7,7 @@ import {
   mergeRelationships,
   retrieveManyRecords,
   retrieveSingleRecord,
+  normalizeRecord,
 } from './utils';
 
 export default class Model {
@@ -200,17 +201,24 @@ export default class Model {
     const { conn, schema } = this;
     const { type } = schema;
 
-    let createdRecordId;
-    let createdResource;
-
-    const createRecord = (compliant) => {
+    const checkCompliance = (compliant) => {
       if (!compliant) {
         throw new Error(
           'You tried to create a record whose relationships are invalid.'
         );
       }
 
-      return r.table(type).insert(record).run(conn)
+      return {
+        record,
+        schema,
+      };
+    };
+
+    const createRecord = (normalizedRecord) => {
+      let createdRecordId;
+      let createdResource;
+
+      return r.table(type).insert(normalizedRecord).run(conn)
 
         // retrieve the record that was just created
         .then(({ generated_keys: keys }) => {
@@ -218,10 +226,10 @@ export default class Model {
           return retrieveSingleRecord(type, createdRecordId, options).run(conn);
         })
 
-        // create the resource and sync its relationships
+        // create the resource and reconcile its relationships
         .then(createdRecord => {
           createdResource = new Resource(conn, schema, createdRecord);
-          return createdResource.syncRelationships();
+          return createdResource.reconcile();
         })
 
         // return the resource
@@ -230,6 +238,8 @@ export default class Model {
 
     // check record and it's relationships for Redink constraints
     return isCreateCompliant(record, schema, conn)
+      .then(checkCompliance)
+      .then(normalizeRecord)
       .then(createRecord);
   }
 }
