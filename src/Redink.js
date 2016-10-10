@@ -93,64 +93,52 @@ export default class Redink {
    * @return {Promise<Object>}
    */
   registerSchemas() {
-    const { keys } = Object;
-    const { conn, schemas, db } = this;
+    const { conn, schemas, db, visitSchemas } = this;
     const types = [];
 
     const newSchemas = { ...schemas };
 
-    // invoke all relationship functions, i.e. all 'hasMany', 'hasOne', and 'belongsTo' functions
-    keys(newSchemas).forEach(schema => {
-      const { relationships } = newSchemas[schema];
-
-      if (!types.includes(schema)) types.push(schema);
-
-      keys(relationships).forEach(field => {
-        if (typeof relationships[field] !== 'function') {
+    visitSchemas(newSchemas, {
+      enterSchema: ({ type, schema }) => {
+        if (!types.includes(schema)) types.push(type);
+      },
+      enterRelationship: ({ type, field, relationship }) => {
+        if (typeof relationship !== 'function') {
           throw new TypeError(
-            `Tried registering the '${schema}' schema's '${field}' relationship, but it wasn't a ` +
+            `Tried registering the '${type}' schema's '${field}' relationship, but it wasn't a ` +
             'function. Please use \'hasMany\', \'belongsTo\', or \'hasOne\' from ' +
             '\'redink/schema\'.'
           );
         }
 
-        newSchemas[schema].relationships[field] = relationships[field](field);
-      });
+        newSchemas[type].relationships[field] = relationship(field);
+      },
     });
 
-    // hydrate inverse relationships of the newly created schemas object
-    keys(newSchemas).forEach(schema => {
-      const { relationships } = newSchemas[schema];
-
-      keys(relationships).forEach(field => {
-        const { type } = relationships[field];
+    visitSchemas(newSchemas, {
+      enterRelationship: ({ relationship: { type } }) => {
         hydrateInverse(newSchemas, type);
-      });
+      },
     });
 
-    // add schema key to every schema and build the indices object
-    keys(newSchemas).forEach(schema => {
-      const { relationships } = newSchemas[schema];
-
-      keys(relationships).forEach(field => {
-        const { type } = relationships[field];
-
+    visitSchemas(newSchemas, {
+      enterRelationship: ({ type, field, relationship }) => {
         const {
           relation,
+          type: relatedType,
           inverse: {
             relation: inverseRelation,
             field: inverseField,
           },
-        } = newSchemas[schema].relationship(field);
+        } = relationship;
 
-        newSchemas[schema].relationships[field].schema = newSchemas[type];
+        newSchemas[type].relationships[field].schema = newSchemas[relatedType];
 
         if (requiresIndex(relation, inverseRelation)) {
-          if (!this.indices[type]) this.indices[type] = {};
-
-          this.indices[type][inverseField] = true;
+          if (!this.indices[relatedType]) this.indices[relatedType] = {};
+          this.indices[relatedType][inverseField] = true;
         }
-      });
+      },
     });
 
     this.schemas = Object.freeze(newSchemas);
@@ -175,6 +163,38 @@ export default class Redink {
           this.models[type] = new Model(conn, type, newSchemas[type]);
         });
       });
+  }
+
+  /**
+   * Walks through each schema, and calls `actions.enterSchema` upon entering each schema and calls
+   * `actions.enterRelationship` upon entering each relationship of that schema.
+   *
+   * @param {Object} schemas
+   * @param {Object} [actions={}]
+   * @param {Function} [actions.enterSchema]
+   * @param {Function} [actions.enterRelationship]
+   */
+  visitSchemas(schemas, actions = {}) {
+    const { keys } = Object;
+
+    keys(schemas).forEach(type => {
+      const schema = schemas[type];
+
+      if (typeof actions.enterSchema === 'function') {
+        actions.enterSchema({ type, schema });
+      }
+
+      keys(schema.relationships).forEach(field => {
+        if (typeof actions.enterRelationship === 'function') {
+          actions.enterRelationship({
+            relationship: schema.relationships[field],
+            type,
+            schema,
+            field,
+          });
+        }
+      });
+    });
   }
 
   /**
