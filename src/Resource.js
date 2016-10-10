@@ -1,6 +1,12 @@
 /* eslint-disable no-param-reassign */
 import r from 'rethinkdb';
 import ResourceArray from './ResourceArray';
+import {
+  isPushCompliant,
+  isPutCompliant,
+  isRemoveCompliant,
+  isSpliceCompliant,
+} from './constraints/update';
 
 import {
   mergeRelationships,
@@ -147,6 +153,12 @@ export default class Resource {
    * @return {Object}
    */
   relationship(relationship) {
+    if (typeof relationship !== 'string') {
+      throw new TypeError(
+        'Tried calling \'relationship\' method with an argument that was not a String.'
+      );
+    }
+
     return this.relationships[relationship];
   }
 
@@ -287,11 +299,44 @@ export default class Resource {
    * @return {Promise<Resource>}
    */
   put(relationship, data) {
+    const relationshipObject = this.relationship(relationship);
+    const { relation } = relationshipObject;
+
+    if (relation !== 'hasOne' || relation !== 'belongsTo') {
+      throw new TypeError(
+        `Tried calling 'put' on a resource whose 'relationship' is '${relation}'. This method ` +
+        'only works for resources whose \'relationship\' is \'hasOne\' or \'belongsTo\'.'
+      );
+    }
+
+    if (!(data instanceof Resource || typeof data === 'string')) {
+      throw new TypeError(
+        'Tried calling \'put\' with \'data\' that was neither a Resource nor a String.'
+      );
+    }
+
+    const putData = (isCompliant) => {
+      if (!isCompliant) {
+        throw new Error(
+          'Tried calling \'put\' with \'data\' that violated Redink\'s update constraints.'
+        );
+      }
+
+      // TODO: put functionality
+    };
+
+    let id;
+
+    // Ensure `id` is an id string
+    if (typeof data === 'string') id = data;
+    if (data instanceof Resource) id = data.id;
+
+    return isPutCompliant(relationshipObject, id, this.conn).then(putData);
   }
 
   /**
-   * Removes this resource's `hasOne` relationship. The `data` argument can either be a `Resource`
-   * or String id of the resource to remove.
+   * Removes this resource's `hasOne` relationship. The `relationship` argument must be a
+   * relationship String.
    *
    * ```javascript
    * app.model('user').fetchResource('1').then(user => {
@@ -306,14 +351,27 @@ export default class Resource {
    * @return {Promise<Resource>}
    */
   remove(relationship) {
-    const { relation } = this.relationship(relationship);
+    const relationshipObject = this.relationship(relationship);
+    const { relation, inverse: { relation: inverseRelation } } = relationshipObject;
 
     if (relation !== 'hasOne') {
       throw new TypeError(
-        `Tried calling 'push' on a relationship whose relation is '${relation}'. This method ` +
-        'only works for relationships whose relation is \'hasMany\'.'
+        `Tried calling 'remove' on a resource whose 'relationship' is '${relation}'. This method ` +
+        'only works for resources whose \'relationship\' is \'hasOne\'.'
       );
     }
+
+    const removeData = () => {
+      if (!isRemoveCompliant(inverseRelation)) {
+        throw new Error(
+          'Tried calling \'remove\' with a relationship that violated Redink\'s update constraints.'
+        );
+      }
+
+      // TODO: remove functionality
+    };
+
+    return removeData();
   }
 
   /**
@@ -348,14 +406,39 @@ export default class Resource {
    * @return {Promise<Resource>}
    */
   push(relationship, data) {
-    const { relation } = this.relationship(relationship);
+    const relationshipObject = this.relationship(relationship);
+    const { relation } = relationshipObject;
 
     if (relation !== 'hasMany') {
       throw new TypeError(
-        `Tried calling 'push' on a relationship whose relation is '${relation}'. This method ` +
-        'only works for relationships whose relation is \'hasMany\'.'
+        `Tried calling 'push' on a resource whose 'relationship' is '${relation}'. This method ` +
+        'only works for resources whose \'relationship\' is \'hasMany\'.'
       );
     }
+
+    if (!(data instanceof ResourceArray || Array.isArray(data))) {
+      throw new TypeError(
+        'Tried calling \'push\' with \'data\' that was neither a ResourceArray nor an Array.'
+      );
+    }
+
+    const pushData = (isCompliant) => {
+      if (!isCompliant) {
+        throw new Error(
+          'Tried calling \'push\' with \'data\' that violated Redink\'s update constraints.'
+        );
+      }
+
+      // TODO: push functionality
+    };
+
+    let ids;
+
+    // Ensure `ids` is an array of id strings
+    if (Array.isArray(data)) ids = data;
+    if (data instanceof ResourceArray) ids = data.map(resource => resource.id);
+
+    return isPushCompliant(relationshipObject, ids, this.conn).then(pushData);
   }
 
   /**
@@ -390,14 +473,33 @@ export default class Resource {
    * @return {Promise<Resource>}
    */
   splice(relationship, data) {
-    const { relation } = this.relationship(relationship);
+    const relationshipObject = this.relationship(relationship);
+    const { relation, inverse: { relation: inverseRelation } } = relationshipObject;
 
     if (relation !== 'hasMany') {
       throw new TypeError(
-        `Tried calling 'pop' on a relationship whose relation is '${relation}'. This method only ` +
-        'works for relationships whose relation is \'hasMany\'.'
+        `Tried calling 'splice' on a resource whose 'relationship' is '${relation}'. This method ` +
+        'only works for resources whose \'relationship\' is \'hasMany\'.'
       );
     }
+
+    if (!(data instanceof ResourceArray || Array.isArray(data))) {
+      throw new TypeError(
+        'Tried calling \'splice\' with \'data\' that was neither a ResourceArray nor an Array.'
+      );
+    }
+
+    const spliceData = () => {
+      if (!isSpliceCompliant(inverseRelation)) {
+        throw new Error(
+          'Tried calling \'splice\' with a relationship that violated Redink\'s update constraints.'
+        );
+      }
+
+      // TODO: splice functionality
+    };
+
+    return spliceData();
   }
 
   /**
