@@ -34,7 +34,7 @@ hasOne --> hasOne
 NOTE: The inverse's relationship is not actually stored.
 hasOne --> hasMany
 
-`checkValidIds`
+`checkValidId`
 - The new id in the original's relationship must point to a "valid" id.
 
 hasOne --> belongsTo

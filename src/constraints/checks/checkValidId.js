@@ -4,7 +4,7 @@ import { isRecordValid } from './utils';
 export default (type, id, conn) => {
   if (typeof id !== 'string') {
     throw new Error(
-      `Expected '${type}' to be a 'string' but got type '${typeof ids}'.`
+      `Expected '${type}' relationship to be a 'string' but got type '${typeof ids}'`
     );
   }
 
