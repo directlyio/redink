@@ -4,7 +4,7 @@ export default (relationship, data, conn) => {
   const { inverse, type } = relationship;
   const { relation, field } = inverse;
 
-  if (data === []) return true;
+  if (data.length === 0) return true;
 
   switch (relation) {
     case 'hasMany':

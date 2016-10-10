@@ -1,4 +1,4 @@
-/* eslint-disable no-param-reassign */
+/* eslint-disable */
 import r from 'rethinkdb';
 import ResourceArray from './ResourceArray';
 import {
@@ -40,7 +40,7 @@ export default class Resource {
     this.conn = conn;
     this.schema = schema;
     this.id = record.id;
-    this.meta = record.meta || {};
+    this.meta = record._meta || {};
 
     this.attributes = {};
 
@@ -220,9 +220,19 @@ export default class Resource {
   }
 
   /**
-   * Updates this resource's attributes based on `attributes`.
+   * Updates this resource's attributes.
    *
-   * @param {Object} newAttributes
+   * ```javascript
+   * app.model('user').fetchResource('1').then(user => {
+   *   return user.update({
+   *     name: 'CJ',
+   *   });
+   * }).then(user => {
+   *   // Resource
+   * });
+   * ```
+   *
+   * @param {Object} fields
    * @return {Promise<Resource>}
    */
   update(fields, options) {
@@ -254,15 +264,6 @@ export default class Resource {
    * @return {Promise<Resource>}
    */
   archive() {
-  }
-
-  /**
-   * Updates multiple relationships with the corresponding updates.
-   *
-   * @param {Object} updates
-   * @return {Promise<Resource>}
-   */
-  reconcile(updates) {
   }
 
   /**
@@ -526,9 +527,33 @@ export default class Resource {
       relationships: {
         ...this.relationships,
       },
-      meta: {
+      _meta: {
         ...this.meta,
       },
     };
+  }
+
+  /**
+   * Syncs the resource's relationships after it has been created.
+   *
+   * @private
+   * @return {Promise<Resource>}
+   */
+  syncRelationships() {
+    console.log('Hello!');
+    /* const { conn, id, relationships } = this;
+
+    Object.keys(relationships).forEach(relationship => {
+      const { type, inverse } = relationship;
+      const { field, relation } = inverse;
+
+      let table = r.table(type);
+
+      switch(relation) {
+        case 'hasMany':
+
+        case ''
+      }
+    }); */
   }
 }

@@ -1,5 +1,5 @@
-/* eslint-disable no-underscore-dangle */
 import r from 'rethinkdb';
+import { isRecordValid } from './utils';
 
 export default (type, id, conn) => {
   if (typeof id !== 'string') {
@@ -8,15 +8,13 @@ export default (type, id, conn) => {
     );
   }
 
-  const isValid = (record) => !record.meta._archived;
-
-  const handleRecord = (record) => {
-    const validRecord = isValid(record);
+  const checkValidRecord = (record) => {
+    const validRecord = isRecordValid(record);
 
     if (!validRecord) {
       throw new Error(
         `Expected a valid record of type '${type}' ` +
-        `but got invalid record with id of '${record.id}'`
+        `but got invalid record with id of '${id}'.`
       );
     }
 
@@ -26,5 +24,5 @@ export default (type, id, conn) => {
   return r.table(type)
     .get(id)
     .run(conn)
-    .then(handleRecord);
+    .then(checkValidRecord);
 };

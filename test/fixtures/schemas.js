@@ -7,7 +7,7 @@ export const address = schema('address', {
   relationships: {
     company: belongsTo('company', 'address'),
   },
-  meta: {
+  _meta: {
     inflection: 'addresses',
   },
 });
@@ -19,7 +19,7 @@ export const blog = schema('blog', {
   relationships: {
     author: belongsTo('user', 'blogs'),
   },
-  meta: {
+  _meta: {
     inflection: 'blogs',
   },
 });
@@ -32,7 +32,7 @@ export const company = schema('company', {
     employees: hasMany('user', 'company'),
     address: hasOne('address', 'company'),
   },
-  meta: {
+  _meta: {
     inflection: 'companies',
   },
 });
@@ -46,7 +46,7 @@ export const user = schema('user', {
     friends: hasMany('user', 'friends'),
     company: hasOne('company', 'employees'),
   },
-  meta: {
+  _meta: {
     inflection: 'users',
   },
 });
@@ -58,7 +58,7 @@ export const book = schema('book', {
   relationships: {
     author: belongsTo('user', 'books'),
   },
-  meta: {
+  _meta: {
     inflection: 'books',
   },
 });

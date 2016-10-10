@@ -1,6 +1,4 @@
 /* eslint-disable no-param-reassign */
-import { forEach } from 'lodash';
-
 export default ({ record, schema }) => {
   const normalize = (id) => ({
     id,
@@ -10,13 +8,14 @@ export default ({ record, schema }) => {
 
   const normalizeMany = (ids) => ids.map(id => normalize(id));
 
-  forEach(schema.relationships, (relationship) => {
-    const { field, relation } = relationship;
+  Object.keys(schema.relationships).forEach(relationship => {
+    const relationshipObject = schema.relationships[relationship];
+    const { field, relation } = relationshipObject;
     const data = record[field];
 
     let newData;
 
-    if (record.includes(field)) {
+    if (record.hasOwnProperty(field)) {
       switch (relation) {
         case 'hasMany':
           newData = normalizeMany(data);
@@ -37,6 +36,10 @@ export default ({ record, schema }) => {
 
     record[field] = newData;
   });
+
+  record._meta = {
+    _archived: false,
+  };
 
   return record;
 };

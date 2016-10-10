@@ -1,4 +1,4 @@
-NOTE: "valid" = (1) record exists and (2) that record's `meta._archived` is set to false.
+NOTE: "valid" = (1) record exists and (2) that record's `_meta._archived` is set to false.
 
 hasMany --> hasMany
 
