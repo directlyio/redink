@@ -13,6 +13,7 @@ import {
   requiresIndex,
   retrieveManyRecords,
   retrieveSingleRecord,
+  isDataValidForSpliceAndPush,
 } from './utils';
 
 export default class Resource {
@@ -374,8 +375,8 @@ export default class Resource {
   }
 
   /**
-   * Pushes data to this resource's `relationship`. The `data` can either be a `ResourceArray` or
-   * an array of Strings representing ids.
+   * Pushes data to this resource's `relationship`. The `data` can either be a `Resource`,
+   * `ResourceArray`, array of Strings representing ids, or a String id.
    *
    * ```javascript
    * app.model('user').fetchResource('1').then(user => {
@@ -401,7 +402,7 @@ export default class Resource {
    *
    * @async
    * @param {String} relationship
-   * @param {(String[]|ResourceArray)} ids
+   * @param {(String|String[]|Resource|ResourceArray)} data
    * @return {Promise<Resource>}
    */
   push(relationship, data) {
@@ -415,9 +416,10 @@ export default class Resource {
       );
     }
 
-    if (!(data instanceof ResourceArray || Array.isArray(data))) {
+    if (!isDataValidForSpliceAndPush(data)) {
       throw new TypeError(
-        'Tried calling \'push\' with \'data\' that was neither a ResourceArray nor an Array.'
+        'Tried calling \'push\' with \'data\' that was neither a Resource, ResourceArray, ' +
+        'Array of Strings, nor a String ID.'
       );
     }
 
@@ -441,8 +443,8 @@ export default class Resource {
   }
 
   /**
-   * Splices data to from the resource's `relationship`. The `data` can either be a `ResourceArray`
-   * or an array of Strings representing ids.
+   * Splices data from the resource's `relationship`. The `data` can either be a `Resource`,
+   * `ResourceArray`, array of Strings representing ids, or a String id.
    *
    * ```javascript
    * app.model('user').fetchResource('1').then(user => {
@@ -468,7 +470,7 @@ export default class Resource {
    *
    * @async
    * @param {String} relationship
-   * @param {(String[]|ResourceArray)} ids
+   * @param {(String|String[]|Resource|ResourceArray)} data
    * @return {Promise<Resource>}
    */
   splice(relationship, data) {
@@ -482,9 +484,10 @@ export default class Resource {
       );
     }
 
-    if (!(data instanceof ResourceArray || Array.isArray(data))) {
+    if (!isDataValidForSpliceAndPush(data)) {
       throw new TypeError(
-        'Tried calling \'splice\' with \'data\' that was neither a ResourceArray nor an Array.'
+        'Tried calling \'splice\' with \'data\' that was neither a Resource, ResourceArray, ' +
+        'Array of Strings, nor a String ID.'
       );
     }
 
