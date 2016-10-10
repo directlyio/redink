@@ -12,7 +12,7 @@ hasMany --> hasOne
 
 `checkManyInverseHasOne`
 - The original's relationship must be (A) or (B)
-  (A) null NOTE: check manually
+  (A) an empty array NOTE: check manually
   (B) an array of "valid" ids
 
 - The inverse's relationship must either be (A) or (B) or (C)
@@ -29,7 +29,7 @@ hasOne --> hasOne
 
 `checkInverseHasOne`
 - The original's relationship must either be (A) or (B)
-  (A) empty NOTE: check manually
+  (A) null NOTE: check manually
   (B) point to a "valid" id
 
 - The inverse's relationship must either be (A) or (B) or (C)
@@ -40,9 +40,9 @@ hasOne --> hasOne
 NOTE: The inverse's relationship is not actually stored.
 hasOne --> hasMany
 
-`checkValidIds`
+`checkValidId`
 - The original's relationship must either be (A) or (B)
-  (A) empty NOTE: check manually
+  (A) null NOTE: check manually
   (B) point to a "valid" id
 
 hasOne --> belongsTo
@@ -52,7 +52,7 @@ hasOne --> belongsTo
 NOTE: The inverse's relationship is not actually stored.
 belongsTo --> hasMany
 
-`checkValidIds`
+`checkValidId`
 - The original's relationship must be (1) and (2)
   (1) be set NOTE: check manually
   (2) point to "valid" id

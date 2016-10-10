@@ -1,21 +1,22 @@
-import { checkValidIds } from '../../checks';
+import { checkValidIds, checkManyInverseHasOne } from '../../checks';
 
 export default (inverse, data, conn) => {
-  const { relation, type } = inverse;
+  const { relation, type, field } = inverse;
+
+  if (data === []) return true;
 
   switch (relation) {
     case 'hasMany':
-      // check relationship with original relation `hasMany`
-      if (data === []) return true;
+      // check relationship with inverse relation `hasMany`
       return checkValidIds(type, data, conn);
 
     case 'hasOne':
-      // check relationship with original relation `hasOne`
-      return true;
+      // check relationship with inverse relation `hasOne`
+      return checkManyInverseHasOne(type, data, field, conn);
 
     case 'belongsTo':
-      // check relationship with original relation `belongsTo`
-      return true;
+      // check relationship with inverse relation `belongsTo`
+      return false;
 
     default:
       throw new Error(`Invalid inverse relationship of type '${relation}'`);
