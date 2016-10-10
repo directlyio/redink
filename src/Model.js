@@ -4,6 +4,7 @@ import ResourceArray from './ResourceArray';
 
 import {
   mergeRelationships,
+  requiresIndex,
   retrieveManyRecords,
   retrieveSingleRecord,
 } from './utils';
@@ -118,32 +119,29 @@ export default class Model {
     const { conn, schema, schema: { type: parentType } } = this;
     const { type: relatedType, relation, inverse } = schema.relationships[relationship];
 
-    let relatedTable = r.table(relatedType);
-    const parentTable = r.table(parentType);
-    const ids = parentTable.get(id)(relationship)('id');
+    let table = r.table(relatedType);
 
     if (relation === 'hasMany') {
-      if (
-        inverse.relation === 'belongsTo' ||
-        inverse.relation === 'hasOne'
-      ) {
-        relatedTable = relatedTable.getAll(id, { index: inverse.field });
+      if (requiresIndex(relation, inverse.relation)) {
+        table = table.getAll(id, { index: inverse.field });
       } else {
-        relatedTable = relatedTable.getAll(r.args(ids));
+        table = table.getAll(
+          r.args(r.table(parentType).get(id)(relationship)('id'))
+        );
       }
 
-      relatedTable = retrieveManyRecords(relatedTable, options);
-      relatedTable = mergeRelationships(relatedTable, schema, options);
-      relatedTable = relatedTable.coerceTo('array');
+      table = retrieveManyRecords(table, options);
+      table = mergeRelationships(table, schema, options);
+      table = table.coerceTo('array');
 
-      return relatedTable.run(conn)
+      return table.run(conn)
         .then(records => new ResourceArray(conn, schema, records));
     }
 
-    relatedTable = retrieveSingleRecord(relatedTable, id, options);
-    relatedTable = mergeRelationships(relatedTable, schema, options);
+    table = retrieveSingleRecord(table, id, options);
+    table = mergeRelationships(table, schema, options);
 
-    return relatedTable.run(conn)
+    return table.run(conn)
       .then(record => new Resource(conn, schema, record));
   }
 
