@@ -1,4 +1,4 @@
-import schema, { hasMany, hasOne, belongsTo } from '../../src/schema';
+import { schema, hasMany, hasOne, belongsTo } from '../../src';
 
 export const address = schema('address', {
   attributes: {

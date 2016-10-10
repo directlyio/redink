@@ -33,4 +33,5 @@ function singleton() {
 export const model = (...args) => singleton().instance().model(...args);
 export const disconnect = () => singleton().instance().disconnect();
 
+export schema, { hasOne, belongsTo, hasMany } from './Schema';
 export default singleton;
