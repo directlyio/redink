@@ -2,11 +2,13 @@ NOTE: "valid" = (1) record exists and (2) that record's `meta._archived` is set 
 
 hasMany --> hasMany
 
+`checkValidIds`
 - Any new id in the original's relationship array must point to a "valid" id.
 
 NOTE: The original's relationship is not actually stored.
 hasMany --> hasOne
 
+`checkManyInverseHasOne`
 - Any new id in the original's relationship array must point to a "valid" id.
 
 - Each new id's relationship must either be (A) or (B) or (C)
@@ -21,6 +23,7 @@ hasMany --> belongsTo
 
 hasOne --> hasOne
 
+`checkInverseHasOne`
 - The new id in the original's relationship must point to a "valid" id.
 
 - The new id's relationship must either be (A) or (B) or (C)
@@ -31,6 +34,7 @@ hasOne --> hasOne
 NOTE: The inverse's relationship is not actually stored.
 hasOne --> hasMany
 
+`checkValidIds`
 - The new id in the original's relationship must point to a "valid" id.
 
 hasOne --> belongsTo

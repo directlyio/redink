@@ -2,14 +2,23 @@
 import r from 'rethinkdb';
 import { forEach } from 'lodash';
 
-export default (type, ids, conn) => {
+export default (type, ids, field, conn) => {
   if (!Array.isArray(ids)) {
     throw new Error(
       `Expected '${type}' to be an 'array' but got type '${typeof ids}'`
     );
   }
 
-  const isValid = (record) => !record.meta._archived;
+  const isValid = (record) => {
+    const fieldToCheck = record[field];
+
+    if (record.meta._archived) return false;
+    if (!fieldToCheck) return true;
+    if (fieldToCheck._archived) return true;
+    if (fieldToCheck._related) return true;
+
+    return false;
+  };
 
   const handleRecords = (records) => {
     if (records.length !== ids.length) {
