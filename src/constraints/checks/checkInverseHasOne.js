@@ -4,7 +4,7 @@ import r from 'rethinkdb';
 export default (type, id, field, conn) => {
   if (typeof id !== 'string') {
     throw new Error(
-      `Expected '${type}' to be a 'string' but got type '${typeof ids}'`
+      `Expected '${type}' relationship to be a 'string' but got type '${typeof ids}'`
     );
   }
 

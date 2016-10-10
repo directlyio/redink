@@ -5,7 +5,7 @@ import { forEach } from 'lodash';
 export default (type, ids, field, conn) => {
   if (!Array.isArray(ids)) {
     throw new Error(
-      `Expected '${type}' to be an 'array' but got type '${typeof ids}'`
+      `Expected '${type}' relationship to be an 'array' but got type '${typeof ids}'`
     );
   }
 
