@@ -42,7 +42,7 @@ export default class Model {
    * ```
    * app.model('user').find({
    *   filter: { name: 'Dylan' },
-   *   pluck: { password: true },
+   *   without: { password: true },
    *   include: {
    *     pets: {
    *       filter: (pet) => pet('age').gt(6),
