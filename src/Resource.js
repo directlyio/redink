@@ -265,7 +265,7 @@ export default class Resource {
    * @return {Promise<Resource>}
    */
   update(fields) {
-    const { schema, id, conn, reload } = this;
+    const { schema, id, conn } = this;
     const { type } = schema;
 
     const table = r.table(type);
@@ -278,7 +278,7 @@ export default class Resource {
       .get(id)
       .update(fields)
       .run(conn)
-      .then(reload.bind(this));
+      .then(::this.reload);
   }
 
   /**
@@ -323,7 +323,7 @@ export default class Resource {
       }, initial)
     );
 
-    const { schema: { type }, id, conn, reload } = this;
+    const { schema: { type }, id, conn } = this;
 
     return r.table(type)
       .get(id)
@@ -391,7 +391,7 @@ export default class Resource {
           return true;
         })
       ))
-      .then(reload.bind(this));
+      .then(::this.reload);
   }
 
   /**
@@ -428,7 +428,7 @@ export default class Resource {
   put(relationship, data) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
-    const { conn, schema, id, reload } = this;
+    const { conn, schema, id } = this;
 
     let idToPut;
 
@@ -477,7 +477,7 @@ export default class Resource {
 
     return isPutCompliant(relationshipObject, idToPut, conn)
       .then(putData)
-      .then(reload.bind(this));
+      .then(::this.reload);
   }
 
   /**
@@ -500,7 +500,7 @@ export default class Resource {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, record, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
-    const { schema, id, conn, reload } = this;
+    const { schema, id, conn } = this;
 
     if (relation !== 'hasOne') {
       throw new TypeError(
@@ -536,7 +536,7 @@ export default class Resource {
     };
 
     return removeData()
-      .then(reload.bind(this));
+      .then(::this.reload);
   }
 
   /**
@@ -573,7 +573,7 @@ export default class Resource {
   push(relationship, data) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field, records } = relationshipObject;
-    const { schema, id, conn, reload } = this;
+    const { schema, id, conn } = this;
 
     let idsToPush;
 
@@ -611,7 +611,7 @@ export default class Resource {
 
     return isPushCompliant(relationshipObject, idsToPush, conn)
       .then(pushData)
-      .then(reload.bind(this));
+      .then(::this.reload);
   }
 
   /**
@@ -649,7 +649,7 @@ export default class Resource {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
-    const { schema, id, conn, reload } = this;
+    const { schema, id, conn } = this;
 
     let idsToSplice;
 
@@ -686,7 +686,7 @@ export default class Resource {
     };
 
     return spliceData()
-      .then(reload.bind(this));
+      .then(::this.reload);
   }
 
   /**
