@@ -240,10 +240,7 @@ export default class Model {
         );
       }
 
-      return {
-        record,
-        schema,
-      };
+      return normalizeRecord(record, schema);
     };
 
     const createRecord = (normalizedRecord) => {
@@ -273,7 +270,6 @@ export default class Model {
     // check record and it's relationships for Redink constraints
     return isCreateCompliant(record, schema, conn)
       .then(checkCompliance)
-      .then(normalizeRecord)
       .then(createRecord);
   }
 }

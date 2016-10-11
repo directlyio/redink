@@ -1,5 +1,5 @@
 /* eslint-disable no-param-reassign */
-export default ({ record, schema }) => {
+export default (record, schema) => {
   const normalize = (id) => ({
     id,
     _archived: false,
