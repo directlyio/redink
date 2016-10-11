@@ -6,8 +6,8 @@ export default (inverseType, inverseField, idsToUpdate, idToSplice) => (
       r.branch(data('id').eq(idToSplice),
         {
           id: data('id'),
-          _archived: true,
-          _related: data('_related'),
+          _archived: data('_archived'),
+          _related: false,
         }, data
       )
     )),

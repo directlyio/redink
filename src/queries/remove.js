@@ -1,10 +1,10 @@
 import r from 'rethinkdb';
 
-export default (inverseType, inverseId, inverseField, id) => (
-  r.table(inverseType).get(inverseId).update(row => ({
-    [inverseField]: {
-      id,
-      _archived: row(inverseField)('_archived'),
+export default (type, id, field, idToRemove) => (
+  r.table(type).get(id).update(row => ({
+    [field]: {
+      id: idToRemove,
+      _archived: row(field)('_archived'),
       _related: false,
     },
   }))

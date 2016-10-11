@@ -2,7 +2,7 @@ import {
   BELONGS_TO,
   HAS_ONE,
   HAS_MANY,
-} from '../constants/relationshipTypes';
+} from './constants/relationshipTypes';
 
 const relationshipObject = (type, field, inverse, options) => ({
   type,

@@ -1,11 +1,8 @@
 import r from 'rethinkdb';
+import { convertId } from './utils';
 
-export default (inverseType, inverseId, inverseField, id) => (
-  r.table(inverseType).get(inverseId).update({
-    [inverseField]: {
-      id,
-      _archived: false,
-      _related: true,
-    },
+export default (type, id, field, idToPut) => (
+  r.table(type).get(id).update({
+    [field]: convertId(idToPut),
   })
 );

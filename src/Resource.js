@@ -1,4 +1,4 @@
-/* eslint-disable */
+/* eslint-disable no-param-reassign */
 import r from 'rethinkdb';
 import ResourceArray from './ResourceArray';
 import {
@@ -15,6 +15,15 @@ import {
   retrieveSingleRecord,
   isDataValidForSpliceAndPush,
 } from './utils';
+
+import {
+  pushInverse,
+  pushOriginal,
+  put,
+  remove,
+  spliceInverse,
+  spliceOriginal,
+} from './queries';
 
 export default class Resource {
   /**
@@ -165,6 +174,24 @@ export default class Resource {
   }
 
   /**
+   * Returns an updated version of the resource.
+   *
+   * @param {Options} [options={}]
+   * @return {Promise<Resource>}
+   */
+  reload(options = {}) {
+    const { schema, id, conn } = this;
+
+    let table = r.table(schema.type);
+
+    table = retrieveSingleRecord(table, id, options);
+
+    return table
+      .run(conn)
+      .then(record => new Resource(conn, schema, record));
+  }
+
+  /**
    * Fetches either the `Resource` or `ResourceArray` related to this resource by `relationship`.
    *
    * ```javascript
@@ -236,27 +263,21 @@ export default class Resource {
    * @param {Object} fields
    * @return {Promise<Resource>}
    */
-  update(fields, options) {
-    const { schema, id, conn } = this;
+  update(fields) {
+    const { schema, id, conn, reload } = this;
     const { type } = schema;
 
-    let table = r.table(type);
+    const table = r.table(type);
 
     Object.keys(fields).forEach(field => {
       if (!schema.hasAttribute(field)) delete fields.field;
     });
 
-    const handleUpdate = () => {
-      table = retrieveSingleRecord(table, id, options);
-      return table.run(conn);
-    };
-
     return table
       .get(id)
       .update(fields)
       .run(conn)
-      .then(handleUpdate)
-      .then(record => new Resource(conn, schema, record));
+      .then(reload.bind(this));
   }
 
   /**
@@ -300,7 +321,10 @@ export default class Resource {
    */
   put(relationship, data) {
     const relationshipObject = this.relationship(relationship);
-    const { relation } = relationshipObject;
+    const { relation, inverse, field } = relationshipObject;
+    const { conn, schema, id, reload } = this;
+
+    let idToPut;
 
     if (relation !== 'hasOne' || relation !== 'belongsTo') {
       throw new TypeError(
@@ -322,16 +346,32 @@ export default class Resource {
         );
       }
 
-      // TODO: put functionality
+      switch (inverse.relation) {
+        case 'hasMany':
+          return put(schema.type, id, field, idToPut)
+            .run(conn);
+
+        case 'hasOne':
+          return r.do(
+            put(schema.type, id, field, idToPut),
+            put(inverse.type, idToPut, inverse.field, id)
+          ).run(conn);
+
+        default:
+          throw new TypeError(
+            'Tried calling \'put\' on a resource whose inverse \'relationship\' ' +
+            `is '${inverse.relation}'.`
+          );
+      }
     };
 
-    let id;
-
     // Ensure `id` is an id string
-    if (typeof data === 'string') id = data;
-    if (data instanceof Resource) id = data.id;
+    if (typeof data === 'string') idToPut = data;
+    if (data instanceof Resource) idToPut = data.id;
 
-    return isPutCompliant(relationshipObject, id, this.conn).then(putData);
+    return isPutCompliant(relationshipObject, idToPut, conn)
+      .then(putData)
+      .then(reload.bind(this));
   }
 
   /**
@@ -352,7 +392,9 @@ export default class Resource {
    */
   remove(relationship) {
     const relationshipObject = this.relationship(relationship);
-    const { relation, inverse: { relation: inverseRelation } } = relationshipObject;
+    const { relation, inverse, record, field } = relationshipObject;
+    const { relation: inverseRelation } = inverse;
+    const { schema, id, conn, reload } = this;
 
     if (relation !== 'hasOne') {
       throw new TypeError(
@@ -368,10 +410,27 @@ export default class Resource {
         );
       }
 
-      // TODO: remove functionality
+      switch (inverseRelation) {
+        case 'hasMany':
+          return remove(schema.type, id, field, record.id)
+            .run(conn);
+
+        case 'hasOne':
+          return r.do(
+            remove(schema.type, id, field, record.id),
+            remove(inverse.type, record.id, inverse.field, id)
+          ).run(conn);
+
+        default:
+          throw new TypeError(
+            'Tried calling \'remove\' on a resource whose inverse \'relationship\' ' +
+            `is '${inverseRelation}'.`
+          );
+      }
     };
 
-    return removeData();
+    return removeData()
+      .then(reload.bind(this));
   }
 
   /**
@@ -407,7 +466,10 @@ export default class Resource {
    */
   push(relationship, data) {
     const relationshipObject = this.relationship(relationship);
-    const { relation } = relationshipObject;
+    const { relation, inverse, field, records } = relationshipObject;
+    const { schema, id, conn, reload } = this;
+
+    let idsToPush;
 
     if (relation !== 'hasMany') {
       throw new TypeError(
@@ -430,16 +492,21 @@ export default class Resource {
         );
       }
 
-      // TODO: push functionality
+      if (typeof data === 'string') idsToPush = [data];
+
+      return r.do(
+        pushOriginal(schema.type, id, field, records, idsToPush),
+        pushInverse(inverse.type, inverse.field, records, idsToPush, id)
+      ).run(conn);
     };
 
-    let ids;
-
     // Ensure `ids` is an array of id strings
-    if (Array.isArray(data)) ids = data;
-    if (data instanceof ResourceArray) ids = data.map(resource => resource.id);
+    if (Array.isArray(data)) idsToPush = data;
+    if (data instanceof ResourceArray) idsToPush = data.map(resource => resource.id);
 
-    return isPushCompliant(relationshipObject, ids, this.conn).then(pushData);
+    return isPushCompliant(relationshipObject, idsToPush, conn)
+      .then(pushData)
+      .then(reload.bind(this));
   }
 
   /**
@@ -475,7 +542,11 @@ export default class Resource {
    */
   splice(relationship, data) {
     const relationshipObject = this.relationship(relationship);
-    const { relation, inverse: { relation: inverseRelation } } = relationshipObject;
+    const { relation, inverse, field } = relationshipObject;
+    const { relation: inverseRelation } = inverse;
+    const { schema, id, conn, reload } = this;
+
+    let idsToSplice;
 
     if (relation !== 'hasMany') {
       throw new TypeError(
@@ -498,10 +569,19 @@ export default class Resource {
         );
       }
 
-      // TODO: splice functionality
+      // Ensure `ids` is an array of id strings
+      if (Array.isArray(data)) idsToSplice = data;
+      if (data instanceof ResourceArray) idsToSplice = data.map(resource => resource.id);
+      if (typeof data === 'string') idsToSplice = [data];
+
+      return r.do(
+        spliceOriginal(schema.type, field, id, idsToSplice),
+        spliceInverse(inverse.type, inverse.field, idsToSplice, id)
+      ).run(conn);
     };
 
-    return spliceData();
+    return spliceData()
+      .then(reload.bind(this));
   }
 
   /**
@@ -534,29 +614,5 @@ export default class Resource {
         ...this.meta,
       },
     };
-  }
-
-  /**
-   * Syncs the resource's relationships after it has been created.
-   *
-   * @private
-   * @return {Promise<Resource>}
-   */
-  syncRelationships() {
-    console.log('Hello!');
-    /* const { conn, id, relationships } = this;
-
-    Object.keys(relationships).forEach(relationship => {
-      const { type, inverse } = relationship;
-      const { field, relation } = inverse;
-
-      let table = r.table(type);
-
-      switch(relation) {
-        case 'hasMany':
-
-        case ''
-      }
-    }); */
   }
 }
