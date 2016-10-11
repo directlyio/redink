@@ -1,4 +1,4 @@
-import { schema, hasMany, hasOne, belongsTo } from '../../src';
+import schema, { hasMany, hasOne, belongsTo } from 'redink-schema';
 
 export const address = schema('address', {
   attributes: {
