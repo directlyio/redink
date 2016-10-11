@@ -9,6 +9,7 @@ import {
   retrieveManyRecords,
   retrieveSingleRecord,
   normalizeRecord,
+  syncRelationships,
 } from './utils';
 
 export default class Model {
@@ -257,10 +258,12 @@ export default class Model {
           return retrieveSingleRecord(table, createdRecordId, options).run(conn);
         })
 
-        // create the resource and reconcile its relationships
+        // create the resource and sync its relationships
         .then(createdRecord => {
           createdResource = new Resource(conn, schema, createdRecord);
-          return createdResource.syncRelationships();
+          const syncRelationshipsArray = syncRelationships(record, schema, createdRecordId);
+
+          return r.do(syncRelationshipsArray).run(conn);
         })
 
         // return the resource

@@ -1,5 +1,11 @@
 /* eslint-disable no-param-reassign */
 export default (record, schema) => {
+  const normalizedRecord = {
+    _meta: {
+      _archived: false,
+    },
+  };
+
   const normalize = (id) => ({
     id,
     _archived: false,
@@ -10,21 +16,20 @@ export default (record, schema) => {
 
   Object.keys(schema.relationships).forEach(relationship => {
     const relationshipObject = schema.relationships[relationship];
-    const { field, relation } = relationshipObject;
+    const { field, relation, inverse } = relationshipObject;
     const data = record[field];
-
-    let newData;
 
     if (record.hasOwnProperty(field)) {
       switch (relation) {
         case 'hasMany':
-          newData = normalizeMany(data);
+          if (inverse.relation === 'hasMany') normalizedRecord[field] = normalizeMany(data);
+          else delete normalizedRecord[field];
           break;
 
         case 'hasOne':
         case 'belongsTo':
-          if (!data) newData = data;
-          else newData = normalize(data);
+          if (!data) normalizedRecord[field] = data;
+          else normalizedRecord[field] = normalize(data);
           break;
 
         default:
@@ -33,13 +38,7 @@ export default (record, schema) => {
           );
       }
     }
-
-    record[field] = newData;
   });
 
-  record._meta = {
-    _archived: false,
-  };
-
-  return record;
+  return normalizedRecord;
 };

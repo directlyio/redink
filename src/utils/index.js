@@ -5,4 +5,5 @@ export { default as requiresIndex } from './requiresIndex';
 export { default as retrieveManyRecords } from './retrieveManyRecords';
 export { default as retrieveSingleRecord } from './retrieveSingleRecord';
 export { default as normalizeRecord } from './normalizeRecord';
+export { default as syncRelationships } from './syncRelationships';
 export { default as isDataValidForSpliceAndPush } from './isDataValidForSpliceAndPush';

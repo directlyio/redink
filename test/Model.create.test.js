@@ -1,5 +1,6 @@
 import test from 'ava';
 import Resource from '../src/Resource';
+import ResourceArray from '../src/ResourceArray';
 import applyHooks from './helpers/applyHooks';
 import { model } from '../src';
 
@@ -14,7 +15,20 @@ test('should create a user', async t => {
       company: '1',
     });
 
+    const employees = await model('company').fetchResource('1').then(company => (
+      company.fetch('employees').then(employeesArray => employeesArray)
+    ));
+
+    const friends = await model('user').fetchResource('1').then(userResource => (
+      userResource.fetch('friends').then(friendsArray => friendsArray)
+    ));
+
+    t.truthy(employees instanceof ResourceArray);
+    t.truthy(friends instanceof ResourceArray);
     t.truthy(user instanceof Resource);
+
+    t.is(employees.toArray().length, 2);
+    t.is(friends.toArray().length, 2);
   } catch (err) {
     t.fail(err.message);
   }
