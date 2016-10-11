@@ -176,6 +176,7 @@ export default class Resource {
   /**
    * Returns an updated version of the resource.
    *
+   * @method reload
    * @param {Options} [options={}]
    * @return {Promise<Resource>}
    */
@@ -204,7 +205,7 @@ export default class Resource {
    *
    * @method fetch
    * @param {String} relationship
-   * @param {Options} [options={}]
+   * @param {Object} [options={}]
    * @return {Promise<Resource|ResourceArray>}
    */
   fetch(relationship, options = {}) {
@@ -259,7 +260,7 @@ export default class Resource {
    *   // Resource
    * });
    * ```
-   *
+   * @method update
    * @param {Object} fields
    * @return {Promise<Resource>}
    */
@@ -281,11 +282,116 @@ export default class Resource {
   }
 
   /**
-   * Archives this resource and recursively archives it's corresponding relationships.
+   * Archives this resource and archives its corresponding relationships.
    *
+   * ```javascript
+   * app.model('user').fetchResource('1').then(user => {
+   *   return user.archive();
+   * }).then(user => {
+   *   // Resource
+   * });
+   * ```
+   *
+   * @method archive
    * @return {Promise<Resource>}
    */
   archive() {
+    const initial = {
+      _meta: {
+        _archived: true,
+      },
+    };
+
+    const updateObject = () => (
+      Object.keys(this.relationships).reduce((prev, curr) => {
+        const { relation, inverse: { relation: inverseRelation } } = this.relationships(curr);
+
+        if (relation === 'hasOne' && inverseRelation === 'belongsTo') {
+          return {
+            ...prev,
+            relationships: {
+              ...prev.relationships,
+              [curr]: {
+                ...prev.relationships[curr],
+                _archived: true,
+              },
+            },
+          };
+        }
+
+        return prev;
+      }, initial)
+    );
+
+    const { schema: { type }, id, conn, reload } = this;
+
+    return r.table(type)
+      .get(id)
+      .update(updateObject())
+      .run(conn)
+      .then(() => Promise.all(
+        Object.keys(this.relationships).map(field => {
+          const { relation, inverse: { relation: inverseRelation } } = this.relationships(field);
+
+          if (relation === 'hasMany') {
+            switch (inverseRelation) {
+              case 'hasMany':
+                return this.fetch(field)
+                  .then(resources =>
+                    Promise.all(resources.map(resource => resource.archiveSplice(this)))
+                  );
+              case 'belongsTo':
+                return this.fetch(field)
+                  .then(resources =>
+                    Promise.all(resources.map(resource =>
+                      Promise.all([resource.archive(), resource.archiveRemove(this)])
+                    ))
+                  );
+              case 'hasOne':
+                return this.fetch(field)
+                  .then(resources =>
+                    Promise.all(resources.map(resource => resource.archiveRemove(this)))
+                  );
+              default:
+                return true;
+            }
+          }
+
+          if (relation === 'hasOne') {
+            switch (inverseRelation) {
+              case 'hasMany':
+                return true;
+              case 'belongsTo':
+                return this.fetch(field)
+                  .then(resource =>
+                    Promise.all([resource.archive(), resource.archiveRemove(this)])
+                  );
+              case 'hasOne':
+                return this.fetch(field)
+                  .then(resource => resource.archiveRemove(this));
+              default:
+                return true;
+            }
+          }
+
+          if (relation === 'belongsTo') {
+            switch (inverseRelation) {
+              case 'hasMany':
+                return true;
+              case 'belongsTo':
+                return true;
+              case 'hasOne':
+                return this.fetch(field)
+                  .then(resource => resource.archiveRemove(this));
+              default:
+                return true;
+            }
+          }
+
+          return true;
+        })
+      ))
+      .then(reload.bind(this));
   }
 
   /**
