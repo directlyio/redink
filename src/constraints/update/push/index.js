@@ -9,8 +9,10 @@ export default (relationshipObject, ids, conn) => {
   switch (inverseRelation) {
     case 'hasMany':
       return checkValidIds(type, ids, conn);
+
     case 'hasOne':
       return checkManyInverseHasOne(type, ids, inverseField, conn);
+
     case 'belongsTo':
     default:
       return Promise.resolve(false);

@@ -1,4 +1,5 @@
-import { Resource, ResourceArray } from '../';
+import Resource from '../Resource';
+import ResourceArray from '../ResourceArray';
 
 const isArrayOfStrings = (array) => {
   if (!Array.isArray(array)) return false;

@@ -3,6 +3,7 @@ export default (inverseRelation) => {
     case 'hasMany':
     case 'hasOne':
       return true;
+
     case 'belongsTo':
     default:
       return false;

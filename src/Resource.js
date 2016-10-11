@@ -326,7 +326,7 @@ export default class Resource {
 
     let idToPut;
 
-    if (relation !== 'hasOne' || relation !== 'belongsTo') {
+    if (relation !== 'hasOne' && relation !== 'belongsTo') {
       throw new TypeError(
         `Tried calling 'put' on a resource whose 'relationship' is '${relation}'. This method ` +
         'only works for resources whose \'relationship\' is \'hasOne\' or \'belongsTo\'.'
@@ -492,8 +492,6 @@ export default class Resource {
         );
       }
 
-      if (typeof data === 'string') idsToPush = [data];
-
       return r.do(
         pushOriginal(schema.type, id, field, records, idsToPush),
         pushInverse(inverse.type, inverse.field, records, idsToPush, id)
@@ -503,6 +501,7 @@ export default class Resource {
     // Ensure `ids` is an array of id strings
     if (Array.isArray(data)) idsToPush = data;
     if (data instanceof ResourceArray) idsToPush = data.map(resource => resource.id);
+    if (typeof data === 'string') idsToPush = [data];
 
     return isPushCompliant(relationshipObject, idsToPush, conn)
       .then(pushData)
