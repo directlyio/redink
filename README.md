@@ -4,110 +4,90 @@ RethinkDB ORM
 [![CircleCI](https://circleci.com/gh/endfire/redink.svg?style=svg)](https://circleci.com/gh/endfire/redink)
 [![codecov](https://codecov.io/gh/endfire/redink/branch/master/graph/badge.svg)](https://codecov.io/gh/endfire/redink)
 
-![dink]
-[dink]: http://www.dvd.net.au/movies/s/05627-2.jpg
 ## Installation
-Install [node.js](http://nodejs.org/) Then:
-
 ```sh
 $ npm install redink
 ```
 
-## Overview
-### Define your schemas
-First we need to define our schemas.
+## Define schemas
+```js
+import { schema, hasMany, hasOne, belongsTo } from 'redink';
 
-Example schemas.js file:
-
-```javascript
-export default {
-  user: {
-    attributes: {
-      name: true,
-      email: true,
-    },
-    relationships: {
-      blogs: {
-        hasMany: 'blog',
-        inverse: 'user',
-      },
-    },
+export const user = schema('user', {
+  attributes: {
+    name: true,
+    email: true,
+    createdOn: true,
   },
-  blog: {
-    attributes: {
-      title: true,
-      content: true,
-    },
-    relationships: {
-      user: {
-        belongsTo: 'user',
-        inverse: 'blogs',
-      },
-    },
+  relationships: {
+    blogs: hasMany('blog', 'author'),
+    company: hasOne('company', 'employees'),
   },
-};
-```
-
-### Connect to RethinkDB
-Then we need to start the connection:
-
-```javascript
-import redink from 'redink';
-import schemas from './schemas';
-
-const db = redink();
-
-const option = {
-  host, // RethinkDB host
-  name, // Name of the database to connect to
-  schemas, // Imported schemas object
-};
-
-db.start(options).then(...);
-```
-
-### Redink database methods
-Here is a list of redink methods
-
-⋅⋅1) create
-⋅⋅2) update
-⋅⋅3) archive
-⋅⋅4) find
-⋅⋅5) fetch
-⋅⋅6) fetchRelated
-
-#### Create
-```javascript
-import { create } from 'redink';
-
-create('user', {
-  name: 'CJ',
-  email: 'brewercalvinj@gmail.com',
-}).then(response => {
-  // response
-  {
-    id: '1',
-    name: 'CJ',
-    email: 'brewercalvinj@gmail.com',
-  }
 });
 
-create('blog', {
-  title: 'How to redink',
-  content: 'Content of my blog',
-  user: '1',
-}).then(response => {
-  //response
-  {
-    id: '2',
-    title: 'How to redink',
-    content: 'Content of my blog',
-    user: {
-      id: '1',
-      name: 'CJ',
-      email: 'brewercalvinj@gmail.com',
-      blogs: ['2'],
-    },
-  }
+export const blog = schema('blog', {
+  attributes: {
+    title: true,
+    content: true,
+    createdOn: true,
+  },
+  relationships: {
+    author: belongsTo('user', 'blogs'),
+  },
+});
+
+export const company = schema('company', {
+  attributes: {
+    name: true,
+    street: true,
+    city: true,
+    state: true,
+    zip: true,
+  },
+  relationships: {
+    employees: hasMany('user', 'company'),
+  },
+});
+```
+
+## Connect
+```js
+import redink from 'redink';
+import * as schemas from './schemas';
+
+redink()
+
+  // connect to the RethinkDB instance and register the schemas
+  .connect({
+    schemas,
+    db: `${db}`,
+    host: `${host}`,
+    verbose: true,
+  })
+
+  // yay
+  .then(() => console.log('Connected!'))
+
+  // damn
+  .catch(console.error);
+```
+
+## Simple API
+Comprehensive documentation coming soon.
+```js
+import { model } from 'redink';
+
+model('user').create({
+  name: 'Von Miller',
+  email: 'mvp@gmail.com',
+  createdOn: Date.now(),
+}).then(user => {
+  // Resource
+});
+
+model('user').find({
+  filter: { name: 'Von Miller' },
+}).then(user => {
+  // Resource
 });
 ```
