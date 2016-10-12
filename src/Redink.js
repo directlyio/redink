@@ -288,8 +288,8 @@ export default class Redink {
    * registry. Any string in `types` after a colon is interpreted as an alias.
    *
    * ```js
-   * const model = app.model('user'); // user model
-   * const modelArray = app.model('user', 'animal:pets'); // animal model with 'pets' alias
+   * const model = model('user'); // user model
+   * const modelArray = model('user', 'animal:pets'); // animal model with 'pets' alias
    * ```
    *
    * @method model

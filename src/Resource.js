@@ -92,7 +92,7 @@ export default class Resource {
    * Returns an attribute.
    *
    * ```javascript
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   user.attribute('name') === 'Dylan'
    * });
    * ```
@@ -109,7 +109,7 @@ export default class Resource {
    * Returns a relationship of the resource.
    *
    * ```javascript
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   user.relationship('pets') === {
    *     type: 'animal',
    *     field: 'pets',
@@ -198,7 +198,7 @@ export default class Resource {
    * Fetches either the `Resource` or `ResourceArray` related to this resource by `relationship`.
    *
    * ```javascript
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   return user.fetch('company');
    * }).then(company => {
    *   // Resource
@@ -254,7 +254,7 @@ export default class Resource {
    * Updates this resource's attributes.
    *
    * ```javascript
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   return user.update({
    *     name: 'CJ',
    *   });
@@ -399,7 +399,7 @@ export default class Resource {
    * Archives this resource and archives its corresponding relationships.
    *
    * ```javascript
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   return user.archive();
    * }).then(user => {
    *   // Resource
@@ -544,13 +544,13 @@ export default class Resource {
    * by `relationship`. The `data` argument can either be a Resource or String id.
    *
    * ```javascript
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   return user.put('company', '1');
    * }).then(user => {
    *   // Resource
    * });
    *
-   * app.model('user', 'company').map({
+   * model('user', 'company').map({
    *   user(model) {
    *     return model.fetchResource('1');
    *   },
@@ -629,7 +629,7 @@ export default class Resource {
    * relationship String.
    *
    * ```javascript
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   return user.remove('company');
    * }).then(user => {
    *   // Resource
@@ -687,13 +687,13 @@ export default class Resource {
    * `ResourceArray`, array of Strings representing ids, or a String id.
    *
    * ```javascript
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   return user.push('pets', ['1', '2']);
    * }).then(user => {
    *   const newPets = user.relationship('pets'); // will include pets with ids '1' and '2'
    * });
    *
-   * app.model('user', 'animal:pets').map({
+   * model('user', 'animal:pets').map({
    *   user(model) {
    *     return model.fetchResource('1');
    *   },
@@ -762,13 +762,13 @@ export default class Resource {
    * `ResourceArray`, array of Strings representing ids, or a String id.
    *
    * ```javascript
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   return user.splice('pets', ['1', '2']);
    * }).then(user => {
    *   const newPets = user.relationship('pets'); // will not include pets with ids '1' and '2'
    * });
    *
-   * app.model('user', 'animal:pets').map({
+   * model('user', 'animal:pets').map({
    *   user(model) {
    *     return model.fetchResource('1');
    *   },

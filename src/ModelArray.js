@@ -77,13 +77,13 @@ export default class ModelArray {
    * Returns an object of values returned by each function in `actions`.
    *
    * ```js
-   * app.model('user', 'animal:pets').map({
+   * model('user', 'animal:pets').map({
    *   user(model) {
-   *     // model === app.model('user')
+   *     // model === model('user')
    *     return model.findResource('1');
    *   },
    *   pets(model) {
-   *     // model === app.model('animal')
+   *     // model === model('animal')
    *     return model.find({
    *       filter: { age: 5 },
    *     });

@@ -55,7 +55,7 @@ export default class ResourceArray {
    * Maps over the resources and invokes `fn` with each individual `resource` as the argument.
    *
    * ```
-   * app.model('user').findRelated('1', 'pets').then(pets => {
+   * model('user').findRelated('1', 'pets').then(pets => {
    *   return pets.map(pet => pet.update({ age: pet.attribute('age') + 1 }));
    * }).then(newPets => {
    *   // ResourceArray
@@ -74,7 +74,7 @@ export default class ResourceArray {
    * Invokes `fn` with each individual `resource` as the argument.
    *
    * ```
-   * app.model('user').findRelated('1', 'pets').then(pets => {
+   * model('user').findRelated('1', 'pets').then(pets => {
    *   return pets.each(pet => pet.archive());
    * });
    * ```
@@ -82,7 +82,7 @@ export default class ResourceArray {
    * @method fn
    * @param {Function} fn
    */
-  each(fn) {
+  forEach(fn) {
     this.resources.forEach(fn);
   }
 
@@ -94,6 +94,47 @@ export default class ResourceArray {
    */
   size() {
     return this.resources.length;
+  }
+
+  /**
+   * Returns true if the predicate function returns true for every resource.
+   *
+   * ```
+   * model('user').findRelated('1', 'pets').then(pets => {
+   *   return pets.every(pet => pet.attribute('species') === 'Dog');
+   * }).then(areAllPetsDogs => {
+   *   // Boolean
+   * });
+   * ```
+   *
+   * @method every
+   * @param {Function} fn
+   * @return {Boolean}
+   */
+  every(fn) {
+    return this.resoures.every(fn);
+  }
+
+  /**
+   * Returns true if the predicate function returns true for any resource.
+   *
+   * @method some
+   * @param {Function} fn
+   * @return {Boolean}
+   */
+  some(fn) {
+    return this.resources.some(fn);
+  }
+
+  /**
+   * Reduces this resource array.
+   *
+   * @param {Function} fn
+   * @param {*} initialValue
+   * @return {*}
+   */
+  reduce(fn, initialValue) {
+    return this.resources.reduce(fn, initialValue);
   }
 
   /**

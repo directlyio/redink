@@ -43,7 +43,7 @@ export default class Model {
    * Finds resources that match the criteria in `options`.
    *
    * ```
-   * app.model('user').find({
+   * model('user').find({
    *   filter: { name: 'Dylan' },
    *   without: { password: true },
    *   include: {
@@ -97,7 +97,7 @@ export default class Model {
    * Finds resources using the index named `index`.
    *
    * ```
-   * app.model('user').findByIndex('email', 'dylanslack@gmail.com').then(users => {
+   * model('user').findByIndex('email', 'dylanslack@gmail.com').then(users => {
    *   // ResourceArray
    * });
    * ```
@@ -134,14 +134,14 @@ export default class Model {
    *
    * ```js
    * // pretend user `1` has a ton of pets
-   * app.model('user').findRelated('1', 'pets', {
+   * model('user').findRelated('1', 'pets', {
    *   filter: { species: 'hamster' },
    * }).then(pets => {
    *   // ResourceArray
    * });
    *
    * // pretend user `1` has a company
-   * app.model('user').findRelated('1', 'company').then(company => {
+   * model('user').findRelated('1', 'company').then(company => {
    *   // Resource
    * });
    * ```
@@ -186,7 +186,7 @@ export default class Model {
    * Retrieves the resource corresponding to `id`.
    *
    * ```js
-   * app.model('user').fetchResource('1').then(user => {
+   * model('user').fetchResource('1').then(user => {
    *   // Resource
    * });
    * ```
@@ -214,7 +214,7 @@ export default class Model {
    * for a `hasMany` relation.
    *
    * ```js
-   * app.model('user').create({
+   * model('user').create({
    *   name: 'Dylan',
    *   email: 'dylanslack@gmail.com',
    *   password: 'supersecret',
