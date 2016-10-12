@@ -273,7 +273,7 @@ export default class Resource {
     const table = r.table(type);
 
     Object.keys(fields).forEach(field => {
-      if (!schema.hasAttribute(field)) delete fields.field;
+      if (!schema.hasAttribute(field)) delete fields[field];
     });
 
     return table
