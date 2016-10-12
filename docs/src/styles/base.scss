@@ -1,3 +1,5 @@
+@import 'styles/colors';
+
 :global {
   html, body {
     height: 100%;
@@ -5,5 +7,27 @@
 
   #root {
     height: 100%;
-  }  
+  }
+
+  .heading {
+    font-weight: 100;
+    margin-top: 0;
+    font-size: 2rem;
+    max-width: 600px;
+  }
+
+  .paragraph {
+    margin-top: 0;
+    max-width: 600px;
+    line-height: 1.4rem;
+    color: transparentize($dark, 0.2);
+  }
+
+  .link {
+    color: $red;
+
+    &:hover {
+      color: transparentize($red, 0.2);
+    }
+  }
 }
