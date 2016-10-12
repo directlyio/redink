@@ -22,6 +22,13 @@ export default (schemas, type) => {
     const { inverse, type: relatedType } = relationships[field];
     const relatedSchema = schemas[relatedType];
 
+    if (!inverse) {
+      throw new Error(
+        `Tried to hydrate the inverses on the '${type}' schema, but the inverse was not defined ` +
+        `for the '${field}' relationship.`
+      );
+    }
+
     if (!inverse.field) return;
 
     if (!relatedSchema) {
