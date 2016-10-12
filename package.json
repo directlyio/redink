@@ -72,7 +72,7 @@
       "babel-register"
     ],
     "babel": "inherit",
-    "timeout": "1m",
+    "timeout": "5m",
     "serial": true
   }
 }
