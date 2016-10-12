@@ -57,6 +57,7 @@
     "eslint-plugin-react": "^5.2.2",
     "mkdirp": "^0.5.1",
     "nyc": "^7.0.0",
+    "redink-schema": "0.0.1",
     "rimraf": "^2.5.3"
   },
   "ava": {
