@@ -14,6 +14,7 @@ import {
   retrieveManyRecords,
   retrieveSingleRecord,
   isDataValidForSpliceAndPush,
+  getArchiveOriginalUpdateObject,
 } from './utils';
 
 import {
@@ -396,7 +397,7 @@ export default class Resource {
   }
 
   /**
-   * Archives this resource and archives its corresponding relationships.
+   * Archives this resource and recursively archives its corresponding relationships.
    *
    * ```javascript
    * model('user').fetchResource('1').then(user => {
@@ -411,132 +412,119 @@ export default class Resource {
    * @return {Promise<Resource>}
    */
   archive() {
-    const initial = {
-      _meta: {
-        _archived: true,
-      },
-    };
+    const { schema: { type }, id, conn } = this;
+    const updateObject = getArchiveOriginalUpdateObject(this);
 
-    const updateObject = () => (
-      Object.keys(this.relationships).reduce((prev, curr) => {
-        const { relation, inverse: { relation: inverseRelation } } = this.relationship(curr);
+    return r.table(type)
+      .get(id)
+      .update(updateObject)
+      .run(conn)
+      .then(::this.recursivelyArchive)
+      .then(::this.reload);
+  }
 
-        if (relation === 'hasOne' && inverseRelation === 'belongsTo') {
-          return {
-            ...prev,
-            relationships: {
-              ...prev.relationships,
-              [curr]: {
-                ...prev.relationships[curr],
-                _archived: true,
-              },
-            },
-          };
-        }
-
-        return prev;
-      }, initial)
-    );
-
+  /**
+   * Recursively archives this resource's corresponding relationships.
+   *
+   * @async
+   * @private
+   * @return {Promise}
+   */
+  recursivelyArchive() {
     const { id } = this;
 
-    return r.table(this.schema.type)
-      .get(id)
-      .update(updateObject())
-      .run(this.conn)
-      .then(() => Promise.all(
-        Object.keys(this.relationships).map(field => {
-          const {
-            type,
-            relation,
-            inverse: {
-              relation: inverseRelation,
-              field: inverseField,
-              type: inverseType,
-            },
-          } = this.relationship(field);
+    return Promise.all(
+      Object.keys(this.relationships).map(field => {
+        const {
+          type,
+          relation,
+          inverse: {
+            relation: inverseRelation,
+            field: inverseField,
+            type: inverseType,
+          },
+        } = this.relationship(field);
 
-          if (relation === 'hasMany') {
-            switch (inverseRelation) {
-              case 'hasMany':
-                return this.fetch(field)
-                  .then(resources => {
-                    const idsToUpdate = resources.map(resource => resource.id);
-                    return ::this.archiveSpliceIdFromInverseField(
-                      inverseType,
-                      inverseField,
-                      idsToUpdate,
-                      id
-                    );
-                  });
-
-              case 'belongsTo':
-                return this.fetch(field)
-                  .then(resources =>
-                    Promise.all(resources.map(resource =>
-                      Promise.all([
-                        resource.archive(),
-                        resource.archiveRemoveIdFromRecordField(id, inverseField),
-                      ])
-                    ))
+        if (relation === 'hasMany') {
+          switch (inverseRelation) {
+            case 'hasMany':
+              return this.fetch(field)
+                .then(resources => {
+                  const idsToUpdate = resources.map(resource => resource.id);
+                  return ::this.archiveSpliceIdFromInverseField(
+                    inverseType,
+                    inverseField,
+                    idsToUpdate,
+                    id
                   );
+                });
 
-              case 'hasOne':
-                return this.fetch(field)
-                  .then(resources => {
-                    const ids = resources.map(resource => resource.id);
-                    return ::this.archiveRemoveIdFromManyRecordsField(type, ids, inverseField);
-                  });
-
-              default:
-                return true;
-            }
-          }
-
-          if (relation === 'hasOne') {
-            switch (inverseRelation) {
-              case 'hasMany':
-                return true;
-
-              case 'belongsTo':
-                return this.fetch(field)
-                  .then(resource =>
+            case 'belongsTo':
+              return this.fetch(field)
+                .then(resources =>
+                  Promise.all(resources.map(resource =>
                     Promise.all([
                       resource.archive(),
                       resource.archiveRemoveIdFromRecordField(id, inverseField),
                     ])
-                  );
+                  ))
+                );
 
-              case 'hasOne':
-                return this.fetch(field)
-                  .then(resource => resource.archiveRemoveIdFromRecordField(id, inverseField));
+            case 'hasOne':
+              return this.fetch(field)
+                .then(resources => {
+                  const ids = resources.map(resource => resource.id);
+                  return ::this.archiveRemoveIdFromManyRecordsField(type, ids, inverseField);
+                });
 
-              default:
-                return true;
-            }
+            default:
+              return true;
           }
+        }
 
-          if (relation === 'belongsTo') {
-            switch (inverseRelation) {
-              case 'hasMany':
-                return true;
+        if (relation === 'hasOne') {
+          switch (inverseRelation) {
+            case 'hasMany':
+              return true;
 
-              case 'belongsTo':
-                return true;
+            case 'belongsTo':
+              return this.fetch(field)
+                .then(resource =>
+                  Promise.all([
+                    resource.archive(),
+                    resource.archiveRemoveIdFromRecordField(id, inverseField),
+                  ])
+                );
 
-              case 'hasOne':
-                return this.fetch(field)
-                  .then(resource => resource.archiveRemoveIdFromRecordField(id, inverseField));
+            case 'hasOne':
+              return this.fetch(field)
+                .then(resource => resource.archiveRemoveIdFromRecordField(id, inverseField));
 
-              default:
-                return true;
-            }
+            default:
+              return true;
           }
+        }
 
-          return true;
-        })
-      ))
-      .then(::this.reload);
+        if (relation === 'belongsTo') {
+          switch (inverseRelation) {
+            case 'hasMany':
+              return true;
+
+            case 'belongsTo':
+              return true;
+
+            case 'hasOne':
+              return this.fetch(field)
+                .then(resource => resource.archiveRemoveIdFromRecordField(id, inverseField));
+
+            default:
+              return true;
+          }
+        }
+
+        return true;
+      })
+    );
   }
 
   /**
