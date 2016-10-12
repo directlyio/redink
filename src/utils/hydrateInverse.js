@@ -35,6 +35,13 @@ export default (schemas, type) => {
       throw invalidSchemaError(relatedType);
     }
 
+    if (!relatedSchema.relationships[inverse.field]) {
+      throw new Error(
+        'Encountered a malformed relationship when trying to register the schemas. Could not ' +
+        `find the '${inverse.field}' relationship on the '${relatedType}' schema.`
+      );
+    }
+
     const {
       field: inverseField,
       relation: inverseRelation,
