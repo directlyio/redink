@@ -7,15 +7,13 @@ applyHooks(test);
 
 test('should update a user\'s attributes', async t => {
   try {
-    const user = await model('user')
-      .fetchResource('1')
+    const user = await model('user').fetchResource('1')
       .then(userResource => (
         userResource.update({
           name: 'CJ',
           email: 'brewercalinj@gmail.com',
         })
       ));
-
 
     t.truthy(user instanceof Resource);
     t.is(user.attribute('name'), 'CJ');

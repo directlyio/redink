@@ -35,7 +35,7 @@ export default (record, schema) => {
 
         default:
           throw new Error(
-            `Invalid relation of type '${relation}'`
+            `Tried to normalize record with an invalid relationship of type '${relation}'`
           );
       }
     }

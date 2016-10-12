@@ -1,8 +1,8 @@
 import r from 'rethinkdb';
-import { convertId } from './utils';
+import { convertIdToResourcePointer } from './utils';
 
 export default (type, ids, field, idToPut) => (
   r.table(type).getAll(r.args(ids)).update({
-    [field]: convertId(idToPut),
+    [field]: convertIdToResourcePointer(idToPut),
   })
 );

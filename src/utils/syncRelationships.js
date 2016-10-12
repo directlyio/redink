@@ -1,8 +1,8 @@
 /* eslint-disable no-param-reassign */
 import {
-  pushInverse,
-  put,
-  putMany,
+  pushIdToInverseField,
+  putIdToRecordField,
+  putIdToManyRecordsField,
 } from '../queries';
 
 export default (record, schema, id) => {
@@ -19,15 +19,14 @@ export default (record, schema, id) => {
 
     if (record.hasOwnProperty(field)) {
       if (inverseRelation === 'hasMany') {
-        queryToPush = Array.isArray(data)
-          ? pushInverse(inverseType, inverseField, [], data, id)
-          : pushInverse(inverseType, inverseField, [], [data], id);
+        const dataCoercedToArray = Array.isArray(data) ? data : [data];
+        queryToPush = pushIdToInverseField(inverseType, inverseField, [], dataCoercedToArray, id);
       }
 
       if (inverseRelation === 'hasOne') {
         queryToPush = relation === 'hasMany'
-          ? putMany(inverseType, data, inverseField, id)
-          : put(inverseType, data, inverseField, id);
+          ? putIdToManyRecordsField(inverseType, data, inverseField, id)
+          : putIdToRecordField(inverseType, data, inverseField, id);
       }
 
       if (queryToPush) syncRelationshipsArray.push(queryToPush);

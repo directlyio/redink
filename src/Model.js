@@ -234,10 +234,10 @@ export default class Model {
     const { conn, schema } = this;
     const { type } = schema;
 
-    const checkCompliance = (compliant) => {
+    const checkComplianceAndNormalizeRecord = (compliant) => {
       if (!compliant) {
         throw new Error(
-          'You tried to create a record whose relationships are invalid.'
+          'Tried  to call \'create\' with record whose relationships are invalid.'
         );
       }
 
@@ -272,7 +272,7 @@ export default class Model {
 
     // check record and it's relationships for Redink constraints
     return isCreateCompliant(record, schema, conn)
-      .then(checkCompliance)
+      .then(checkComplianceAndNormalizeRecord)
       .then(createRecord);
   }
 }

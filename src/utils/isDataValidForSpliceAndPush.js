@@ -3,7 +3,6 @@ import ResourceArray from '../ResourceArray';
 
 const isArrayOfStrings = (array) => {
   if (!Array.isArray(array)) return false;
-
   return array.every(item => typeof item === 'string');
 };
 

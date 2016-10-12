@@ -7,8 +7,7 @@ applyHooks(test);
 
 test('should remove a user\'s company', async t => {
   try {
-    const user = await model('user')
-      .fetchResource('1')
+    const user = await model('user').fetchResource('1')
       .then(userResource => (
         userResource.remove('company')
       ));

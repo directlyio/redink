@@ -1,15 +1,17 @@
 import r from 'rethinkdb';
 
-export const convertId = (id) => ({
+export const convertIdToResourcePointer = (id) => ({
   id,
   _archived: false,
   _related: true,
 });
 
-export const convertManyIds = (ids) => (
-  ids.map(id => convertId(id))
+export const convertIdsToResourcePointers = (ids) => (
+  ids.map(id => convertIdToResourcePointer(id))
 );
 
 export const getInverseIdsToUpdate = (originalOldIds = [], originalNewIds = []) => (
-  r(originalOldIds).setUnion(r(convertManyIds(originalNewIds))).difference(r(originalOldIds))
+  r(originalOldIds)
+    .setUnion(r(convertIdsToResourcePointers(originalNewIds)))
+    .difference(r(originalOldIds))
 );

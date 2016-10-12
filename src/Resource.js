@@ -17,15 +17,15 @@ import {
 } from './utils';
 
 import {
-  pushInverse,
-  pushOriginal,
-  put,
-  remove,
-  spliceInverse,
-  spliceOriginal,
-  archiveRemove,
-  archiveRemoveMany,
-  archiveSplice,
+  pushIdToInverseField,
+  pushIdToOriginalField,
+  putIdToRecordField,
+  removeIdFromRecordField,
+  spliceIdFromInverseField,
+  spliceIdFromOriginalField,
+  archiveRemoveIdFromRecordField,
+  archiveRemoveIdFromManyRecordsField,
+  archiveSpliceIdFromInverseField,
 } from './queries';
 
 export default class Resource {
@@ -190,8 +190,7 @@ export default class Resource {
 
     table = retrieveSingleRecord(table, id, options);
 
-    return table
-      .run(conn)
+    return table.run(conn)
       .then(record => new Resource(conn, schema, record));
   }
 
@@ -294,23 +293,23 @@ export default class Resource {
    * @param {String} field
    * @return {Object}
    */
-  archiveRemove(idToRemove, field) {
+  archiveRemoveIdFromRecordField(idToRemove, field) {
     if (typeof idToRemove !== 'string') {
       throw new TypeError(
-        'Tried calling \'archiveRemove\' with \'idToRemove\' that was not a string.'
+        'Tried calling \'archiveRemoveIdFromRecordField\' with ' +
+        '\'idToRemove\' that was not a string.'
       );
     }
 
     if (typeof field !== 'string') {
       throw new TypeError(
-        'Tried calling \'archiveRemove\' with \'field\' that was not a string.'
+        'Tried calling \'archiveRemoveIdFromRecordField\' with \'field\' that was not a string.'
       );
     }
 
     const { schema: { type }, id, conn } = this;
 
-    return archiveRemove(type, id, field, idToRemove)
-      .run(conn);
+    return archiveRemoveIdFromRecordField(type, id, field, idToRemove).run(conn);
   }
 
   /**
@@ -324,29 +323,31 @@ export default class Resource {
    * @param {String} field
    * @return {Object}
    */
-  archiveRemoveMany(type, ids, field) {
+  archiveRemoveIdFromManyRecordsField(type, ids, field) {
     if (typeof type !== 'string') {
       throw new TypeError(
-        'Tried calling \'archiveRemoveMany\' with \'type\' that was not a String.'
+        'Tried calling \'archiveRemoveIdFromManyRecordsField\' with ' +
+        '\'type\' that was not a String.'
       );
     }
 
     if (!Array.isArray(ids) || !ids.every(item => typeof item === 'string')) {
       throw new TypeError(
-        'Tried calling \'archiveRemoveMany\' with \'ids\' that was not an Array of Strings.'
+        'Tried calling \'archiveRemoveIdFromManyRecordsField\' with ' +
+        '\'ids\' that was not an Array of Strings.'
       );
     }
 
     if (typeof field !== 'string') {
       throw new TypeError(
-        'Tried calling \'archiveRemoveMany\' with \'field\' that was not a String.'
+        'Tried calling \'archiveRemoveIdFromManyRecordsField\' with ' +
+        '\'field\' that was not a String.'
       );
     }
 
     const { id: idToRemove, conn } = this;
 
-    return archiveRemoveMany(type, ids, field, idToRemove)
-      .run(conn);
+    return archiveRemoveIdFromManyRecordsField(type, ids, field, idToRemove).run(conn);
   }
 
   /**
@@ -361,32 +362,36 @@ export default class Resource {
    * @param {String} idToSplice
    * @return {Object}
    */
-  archiveSplice(inverseType, inverseField, idsToUpdate, idToSplice) {
+  archiveSpliceIdFromInverseField(inverseType, inverseField, idsToUpdate, idToSplice) {
     if (typeof inverseType !== 'string') {
       throw new TypeError(
-        'Tried calling \'archiveSplice\' with \'inverseType\' that was not a String.'
+        'Tried calling \'archiveSpliceIdFromInverseField\' with ' +
+        '\'inverseType\' that was not a String.'
       );
     }
 
     if (typeof inverseField !== 'string') {
       throw new TypeError(
-        'Tried calling \'archiveSplice\' with \'inverseField\' that was not a String.'
+        'Tried calling \'archiveSpliceIdFromInverseField\' with ' +
+        '\'inverseField\' that was not a String.'
       );
     }
 
     if (!Array.isArray(idsToUpdate) || !idsToUpdate.every(item => typeof item === 'string')) {
       throw new TypeError(
-        'Tried calling \'archiveSplice\' with \'idsToUpdate\' that was not an Array of Strings.'
+        'Tried calling \'archiveSpliceIdFromInverseField\' with ' +
+        '\'idsToUpdate\' that was not an Array of Strings.'
       );
     }
 
     if (typeof idToSplice !== 'string') {
       throw new TypeError(
-        'Tried calling \'archiveSplice\' with \'idToSplice\' that was not a String.'
+        'Tried calling \'archiveSpliceIdFromInverseField\' with ' +
+        '\'idToSplice\' that was not a String.'
       );
     }
 
-    return archiveSplice(inverseType, inverseField, idsToUpdate, idToSplice)
+    return archiveSpliceIdFromInverseField(inverseType, inverseField, idsToUpdate, idToSplice)
       .run(this.conn);
   }
 
@@ -457,14 +462,22 @@ export default class Resource {
                 return this.fetch(field)
                   .then(resources => {
                     const idsToUpdate = resources.map(resource => resource.id);
-                    return ::this.archiveSplice(inverseType, inverseField, idsToUpdate, id);
+                    return ::this.archiveSpliceIdFromInverseField(
+                      inverseType,
+                      inverseField,
+                      idsToUpdate,
+                      id
+                    );
                   });
 
               case 'belongsTo':
                 return this.fetch(field)
                   .then(resources =>
                     Promise.all(resources.map(resource =>
-                      Promise.all([resource.archive(), resource.archiveRemove(id, inverseField)])
+                      Promise.all([
+                        resource.archive(),
+                        resource.archiveRemoveIdFromRecordField(id, inverseField),
+                      ])
                     ))
                   );
 
@@ -472,7 +485,7 @@ export default class Resource {
                 return this.fetch(field)
                   .then(resources => {
                     const ids = resources.map(resource => resource.id);
-                    return ::this.archiveRemoveMany(type, ids, inverseField);
+                    return ::this.archiveRemoveIdFromManyRecordsField(type, ids, inverseField);
                   });
 
               default:
@@ -488,12 +501,15 @@ export default class Resource {
               case 'belongsTo':
                 return this.fetch(field)
                   .then(resource =>
-                    Promise.all([resource.archive(), resource.archiveRemove(id, inverseField)])
+                    Promise.all([
+                      resource.archive(),
+                      resource.archiveRemoveIdFromRecordField(id, inverseField),
+                    ])
                   );
 
               case 'hasOne':
                 return this.fetch(field)
-                  .then(resource => resource.archiveRemove(id, inverseField));
+                  .then(resource => resource.archiveRemoveIdFromRecordField(id, inverseField));
 
               default:
                 return true;
@@ -510,7 +526,7 @@ export default class Resource {
 
               case 'hasOne':
                 return this.fetch(field)
-                  .then(resource => resource.archiveRemove(id, inverseField));
+                  .then(resource => resource.archiveRemoveIdFromRecordField(id, inverseField));
 
               default:
                 return true;
@@ -583,13 +599,12 @@ export default class Resource {
 
       switch (inverse.relation) {
         case 'hasMany':
-          return put(schema.type, id, field, idToPut)
-            .run(conn);
+          return putIdToRecordField(schema.type, id, field, idToPut).run(conn);
 
         case 'hasOne':
           return r.do(
-            put(schema.type, id, field, idToPut),
-            put(inverse.type, idToPut, inverse.field, id)
+            putIdToRecordField(schema.type, id, field, idToPut),
+            putIdToRecordField(inverse.type, idToPut, inverse.field, id)
           ).run(conn);
 
         default:
@@ -647,13 +662,13 @@ export default class Resource {
 
       switch (inverseRelation) {
         case 'hasMany':
-          return remove(schema.type, id, field, record.id)
+          return removeIdFromRecordField(schema.type, id, field, record.id)
             .run(conn);
 
         case 'hasOne':
           return r.do(
-            remove(schema.type, id, field, record.id),
-            remove(inverse.type, record.id, inverse.field, id)
+            removeIdFromRecordField(schema.type, id, field, record.id),
+            removeIdFromRecordField(inverse.type, record.id, inverse.field, id)
           ).run(conn);
 
         default:
@@ -664,8 +679,7 @@ export default class Resource {
       }
     };
 
-    return removeData()
-      .then(::this.reload);
+    return removeData().then(::this.reload);
   }
 
   /**
@@ -720,7 +734,7 @@ export default class Resource {
       );
     }
 
-    const pushData = (isCompliant) => {
+    const checkIsCompliantAndPushData = (isCompliant) => {
       if (!isCompliant) {
         throw new Error(
           'Tried calling \'push\' with \'data\' that violated Redink\'s update constraints.'
@@ -728,8 +742,8 @@ export default class Resource {
       }
 
       return r.do(
-        pushOriginal(schema.type, id, field, records, idsToPush),
-        pushInverse(inverse.type, inverse.field, records, idsToPush, id)
+        pushIdToOriginalField(schema.type, id, field, records, idsToPush),
+        pushIdToInverseField(inverse.type, inverse.field, records, idsToPush, id)
       ).run(conn);
     };
 
@@ -739,7 +753,7 @@ export default class Resource {
     if (typeof data === 'string') idsToPush = [data];
 
     return isPushCompliant(relationshipObject, idsToPush, conn)
-      .then(pushData)
+      .then(checkIsCompliantAndPushData)
       .then(::this.reload);
   }
 
@@ -809,13 +823,12 @@ export default class Resource {
       if (typeof data === 'string') idsToSplice = [data];
 
       return r.do(
-        spliceOriginal(schema.type, field, id, idsToSplice),
-        spliceInverse(inverse.type, inverse.field, idsToSplice, id)
+        spliceIdFromOriginalField(schema.type, field, id, idsToSplice),
+        spliceIdFromInverseField(inverse.type, inverse.field, idsToSplice, id)
       ).run(conn);
     };
 
-    return spliceData()
-      .then(::this.reload);
+    return spliceData().then(::this.reload);
   }
 
   /**
@@ -844,7 +857,7 @@ export default class Resource {
       relationships: {
         ...this.relationships,
       },
-      _meta: {
+      meta: {
         ...this.meta,
       },
     };
