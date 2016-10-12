@@ -23,6 +23,9 @@ import {
   remove,
   spliceInverse,
   spliceOriginal,
+  archiveRemove,
+  archiveRemoveMany,
+  archiveSplice,
 } from './queries';
 
 export default class Resource {
@@ -282,6 +285,112 @@ export default class Resource {
   }
 
   /**
+   * Removes the 'idToRemove' from this resource's 'hasOne' or 'belongsTo' relationship by setting
+   * the resource pointer's _archived to true.
+   *
+   * @async
+   * @private
+   * @param {String} idToRemove
+   * @param {String} field
+   * @return {Object}
+   */
+  archiveRemove(idToRemove, field) {
+    if (typeof idToRemove !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveRemove\' with \'idToRemove\' that was not a string.'
+      );
+    }
+
+    if (typeof field !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveRemove\' with \'field\' that was not a string.'
+      );
+    }
+
+    const { schema: { type }, id, conn } = this;
+
+    return archiveRemove(type, id, field, idToRemove)
+      .run(conn);
+  }
+
+  /**
+   * Removes the 'idToRemove' from each resource, indicated by the array of 'ids', by setting
+   * each resource pointer's _archived to true.
+   *
+   * @async
+   * @private
+   * @param {String} type
+   * @param {String[]} ids
+   * @param {String} field
+   * @return {Object}
+   */
+  archiveRemoveMany(type, ids, field) {
+    if (typeof type !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveRemoveMany\' with \'type\' that was not a String.'
+      );
+    }
+
+    if (!Array.isArray(ids) || !ids.every(item => typeof item === 'string')) {
+      throw new TypeError(
+        'Tried calling \'archiveRemoveMany\' with \'ids\' that was not an Array of Strings.'
+      );
+    }
+
+    if (typeof field !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveRemoveMany\' with \'field\' that was not a String.'
+      );
+    }
+
+    const { id: idToRemove, conn } = this;
+
+    return archiveRemoveMany(type, ids, field, idToRemove)
+      .run(conn);
+  }
+
+  /**
+   * Splices all of the 'idsToUpdate' from this resource's 'hasMany' relationship by setting each
+   * resource pointer's _archived to true.
+   *
+   * @async
+   * @private
+   * @param {String} inverseType
+   * @param {String} inverseField
+   * @param {String[]} idsToUpdate
+   * @param {String} idToSplice
+   * @return {Object}
+   */
+  archiveSplice(inverseType, inverseField, idsToUpdate, idToSplice) {
+    if (typeof inverseType !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveSplice\' with \'inverseType\' that was not a String.'
+      );
+    }
+
+    if (typeof inverseField !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveSplice\' with \'inverseField\' that was not a String.'
+      );
+    }
+
+    if (!Array.isArray(idsToUpdate) || !idsToUpdate.every(item => typeof item === 'string')) {
+      throw new TypeError(
+        'Tried calling \'archiveSplice\' with \'idsToUpdate\' that was not an Array of Strings.'
+      );
+    }
+
+    if (typeof idToSplice !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveSplice\' with \'idToSplice\' that was not a String.'
+      );
+    }
+
+    return archiveSplice(inverseType, inverseField, idsToUpdate, idToSplice)
+      .run(this.conn);
+  }
+
+  /**
    * Archives this resource and archives its corresponding relationships.
    *
    * ```javascript
@@ -292,6 +401,7 @@ export default class Resource {
    * });
    * ```
    *
+   * @async
    * @method archive
    * @return {Promise<Resource>}
    */
@@ -304,7 +414,7 @@ export default class Resource {
 
     const updateObject = () => (
       Object.keys(this.relationships).reduce((prev, curr) => {
-        const { relation, inverse: { relation: inverseRelation } } = this.relationships(curr);
+        const { relation, inverse: { relation: inverseRelation } } = this.relationship(curr);
 
         if (relation === 'hasOne' && inverseRelation === 'belongsTo') {
           return {
@@ -323,35 +433,48 @@ export default class Resource {
       }, initial)
     );
 
-    const { schema: { type }, id, conn } = this;
+    const { id } = this;
 
-    return r.table(type)
+    return r.table(this.schema.type)
       .get(id)
       .update(updateObject())
-      .run(conn)
+      .run(this.conn)
       .then(() => Promise.all(
         Object.keys(this.relationships).map(field => {
-          const { relation, inverse: { relation: inverseRelation } } = this.relationships(field);
+          const {
+            type,
+            relation,
+            inverse: {
+              relation: inverseRelation,
+              field: inverseField,
+              type: inverseType,
+            },
+          } = this.relationship(field);
 
           if (relation === 'hasMany') {
             switch (inverseRelation) {
               case 'hasMany':
                 return this.fetch(field)
-                  .then(resources =>
-                    Promise.all(resources.map(resource => resource.archiveSplice(this)))
-                  );
+                  .then(resources => {
+                    const idsToUpdate = resources.map(resource => resource.id);
+                    return ::this.archiveSplice(inverseType, inverseField, idsToUpdate, id);
+                  });
+
               case 'belongsTo':
                 return this.fetch(field)
                   .then(resources =>
                     Promise.all(resources.map(resource =>
-                      Promise.all([resource.archive(), resource.archiveRemove(this)])
+                      Promise.all([resource.archive(), resource.archiveRemove(id, inverseField)])
                     ))
                   );
+
               case 'hasOne':
                 return this.fetch(field)
-                  .then(resources =>
-                    Promise.all(resources.map(resource => resource.archiveRemove(this)))
-                  );
+                  .then(resources => {
+                    const ids = resources.map(resource => resource.id);
+                    return ::this.archiveRemoveMany(type, ids, inverseField);
+                  });
+
               default:
                 return true;
             }
@@ -361,14 +484,17 @@ export default class Resource {
             switch (inverseRelation) {
               case 'hasMany':
                 return true;
+
               case 'belongsTo':
                 return this.fetch(field)
                   .then(resource =>
-                    Promise.all([resource.archive(), resource.archiveRemove(this)])
+                    Promise.all([resource.archive(), resource.archiveRemove(id, inverseField)])
                   );
+
               case 'hasOne':
                 return this.fetch(field)
-                  .then(resource => resource.archiveRemove(this));
+                  .then(resource => resource.archiveRemove(id, inverseField));
+
               default:
                 return true;
             }
@@ -378,11 +504,14 @@ export default class Resource {
             switch (inverseRelation) {
               case 'hasMany':
                 return true;
+
               case 'belongsTo':
                 return true;
+
               case 'hasOne':
                 return this.fetch(field)
-                  .then(resource => resource.archiveRemove(this));
+                  .then(resource => resource.archiveRemove(id, inverseField));
+
               default:
                 return true;
             }
