@@ -6,7 +6,7 @@ import { model } from '../src';
 
 applyHooks(test);
 
-test('should create a user', async t => {
+test('should create a user and sync it\'s relationships', async t => {
   try {
     const user = await model('user').create({
       name: 'CJ',
@@ -27,6 +27,7 @@ test('should create a user', async t => {
     t.truthy(friends instanceof ResourceArray);
     t.truthy(user instanceof Resource);
 
+    t.is(user.attribute('name'), 'CJ');
     t.is(employees.toArray().length, 2);
     t.is(friends.toArray().length, 2);
   } catch (err) {

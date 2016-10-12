@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 export default (record, schema) => {
   const normalizedRecord = {
+    ...record,
     _meta: {
       _archived: false,
     },
