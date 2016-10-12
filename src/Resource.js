@@ -1,12 +1,32 @@
+/* eslint-disable no-param-reassign */
 import r from 'rethinkdb';
 import ResourceArray from './ResourceArray';
+import {
+  isPushCompliant,
+  isPutCompliant,
+  isRemoveCompliant,
+  isSpliceCompliant,
+} from './constraints/update';
 
 import {
   mergeRelationships,
   requiresIndex,
   retrieveManyRecords,
   retrieveSingleRecord,
+  isDataValidForSpliceAndPush,
 } from './utils';
+
+import {
+  pushIdToInverseField,
+  pushIdToOriginalField,
+  putIdToRecordField,
+  removeIdFromRecordField,
+  spliceIdFromInverseField,
+  spliceIdFromOriginalField,
+  archiveRemoveIdFromRecordField,
+  archiveRemoveIdFromManyRecordsField,
+  archiveSpliceIdFromInverseField,
+} from './queries';
 
 export default class Resource {
   /**
@@ -33,7 +53,7 @@ export default class Resource {
     this.conn = conn;
     this.schema = schema;
     this.id = record.id;
-    this.meta = record.meta || {};
+    this.meta = record._meta || {};
 
     this.attributes = {};
 
@@ -50,15 +70,19 @@ export default class Resource {
       // hydrate relationships
       if (schema.hasRelationship(field)) {
         const relationship = schema.relationship(field);
-        const recordsOrRecord = relationship.relation === 'hasMany'
-          ? 'records'
-          : 'record';
+        const relation = relationship.relation;
+        const inverseRelation = relationship.inverse.relation;
 
         this.relationships[field] = {
           ...relationship,
-          [recordsOrRecord]: record[field],
         };
 
+        if (relation === 'hasMany') {
+          if (inverseRelation === 'hasMany') this.relationships[field].records = record[field];
+          else return;
+        }
+
+        this.relationships[field].record = record[field];
         return;
       }
     });
@@ -67,7 +91,7 @@ export default class Resource {
   /**
    * Returns an attribute.
    *
-   * ```
+   * ```javascript
    * app.model('user').fetchResource('1').then(user => {
    *   user.attribute('name') === 'Dylan'
    * });
@@ -84,19 +108,13 @@ export default class Resource {
   /**
    * Returns a relationship of the resource.
    *
-   * ```
+   * ```javascript
    * app.model('user').fetchResource('1').then(user => {
    *   user.relationship('pets') === {
    *     type: 'animal',
+   *     field: 'pets',
    *     schema: Schema,
    *     relation: 'hasMany',
-   *     records: [{
-   *       id: '1',
-   *       _archived: false,
-   *     }, {
-   *       id: '2',
-   *       _archived: false,
-   *     }],
    *     inverse: {
    *       type: 'user',
    *       relation: 'belongsTo',
@@ -104,13 +122,36 @@ export default class Resource {
    *     },
    *   }
    *
+   *   user.relationship('teachers') === {
+   *     type: 'teacher',
+   *     field: 'teachers',
+   *     schema: Schema,
+   *     relation: 'hasMany',
+   *     records: [{
+   *       id: '1',
+   *       _archived: false,
+   *       _related: true,
+   *     }, {
+   *       id: '2',
+   *       _archived: false,
+   *       _related: true,
+   *     }],
+   *     inverse: {
+   *       type: 'user',
+   *       relation: 'hasMany',
+   *       field: 'students',
+   *     },
+   *   }
+   *
    *   user.relationship('company') === {
    *     type: 'company',
+   *     field: 'company',
    *     schema: Schema,
    *     relation: 'hasOne',
    *     record: {
-   *       id: '1',
+   *       id: '2',
    *       _archived: false,
+   *       _related: true,
    *     },
    *     inverse: {
    *       type: 'user',
@@ -126,23 +167,37 @@ export default class Resource {
    * @return {Object}
    */
   relationship(relationship) {
+    if (typeof relationship !== 'string') {
+      throw new TypeError(
+        'Tried calling \'relationship\' method with an argument that was not a String.'
+      );
+    }
+
     return this.relationships[relationship];
   }
 
   /**
-   * Ensures that the state of this resource propagates through its relationships that demand
-   * propagation.
+   * Returns an updated version of the resource.
    *
-   * @private
-   * @return {Promise}
+   * @method reload
+   * @param {Options} [options={}]
+   * @return {Promise<Resource>}
    */
-  syncRelationships() {
+  reload(options = {}) {
+    const { schema, id, conn } = this;
+
+    let table = r.table(schema.type);
+
+    table = retrieveSingleRecord(table, id, options);
+
+    return table.run(conn)
+      .then(record => new Resource(conn, schema, record));
   }
 
   /**
    * Fetches either the `Resource` or `ResourceArray` related to this resource by `relationship`.
    *
-   * ```
+   * ```javascript
    * app.model('user').fetchResource('1').then(user => {
    *   return user.fetch('company');
    * }).then(company => {
@@ -152,7 +207,7 @@ export default class Resource {
    *
    * @method fetch
    * @param {String} relationship
-   * @param {Options} [options={}]
+   * @param {Object} [options={}]
    * @return {Promise<Resource|ResourceArray>}
    */
   fetch(relationship, options = {}) {
@@ -196,40 +251,299 @@ export default class Resource {
   }
 
   /**
-   * Updates this resoure's attributes based on `attributes`.
+   * Updates this resource's attributes.
    *
-   * @param {Object} updates
-   * @return {Promise<Resource>}
-   */
-  update(updates) {
-  }
-
-  archive() {
-  }
-
-  /**
-   * Reloads this resource with the latest data.
-   *
-   * @return {Promise<Resource>}
-   */
-  reload() {
-  }
-
-  /**
-   * @async
-   * @param {String} relationship
-   * @param {(String[]|ResourceArray)} oldIds
-   * @param {(String[]|ResourceArray)} newIds
-   * @return {Promise<Resource>}
-   */
-  reconcile(relationship, oldIds, newIds) {
-  }
-
-  /**
-   * Assigns a resource to this resource's `hasOne` relationship identified by `relationship`. The
-   * `data` argument can either be a Resource or String id.
-   *
+   * ```javascript
+   * app.model('user').fetchResource('1').then(user => {
+   *   return user.update({
+   *     name: 'CJ',
+   *   });
+   * }).then(user => {
+   *   // Resource
+   * });
    * ```
+   * @method update
+   * @param {Object} fields
+   * @return {Promise<Resource>}
+   */
+  update(fields) {
+    const { schema, id, conn } = this;
+    const { type } = schema;
+
+    const table = r.table(type);
+
+    Object.keys(fields).forEach(field => {
+      if (!schema.hasAttribute(field)) delete fields.field;
+    });
+
+    return table
+      .get(id)
+      .update(fields)
+      .run(conn)
+      .then(::this.reload);
+  }
+
+  /**
+   * Removes the 'idToRemove' from this resource's 'hasOne' or 'belongsTo' relationship by setting
+   * the resource pointer's _archived to true.
+   *
+   * @async
+   * @private
+   * @param {String} idToRemove
+   * @param {String} field
+   * @return {Object}
+   */
+  archiveRemoveIdFromRecordField(idToRemove, field) {
+    if (typeof idToRemove !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveRemoveIdFromRecordField\' with ' +
+        '\'idToRemove\' that was not a string.'
+      );
+    }
+
+    if (typeof field !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveRemoveIdFromRecordField\' with \'field\' that was not a string.'
+      );
+    }
+
+    const { schema: { type }, id, conn } = this;
+
+    return archiveRemoveIdFromRecordField(type, id, field, idToRemove).run(conn);
+  }
+
+  /**
+   * Removes the 'idToRemove' from each resource, indicated by the array of 'ids', by setting
+   * each resource pointer's _archived to true.
+   *
+   * @async
+   * @private
+   * @param {String} type
+   * @param {String[]} ids
+   * @param {String} field
+   * @return {Object}
+   */
+  archiveRemoveIdFromManyRecordsField(type, ids, field) {
+    if (typeof type !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveRemoveIdFromManyRecordsField\' with ' +
+        '\'type\' that was not a String.'
+      );
+    }
+
+    if (!Array.isArray(ids) || !ids.every(item => typeof item === 'string')) {
+      throw new TypeError(
+        'Tried calling \'archiveRemoveIdFromManyRecordsField\' with ' +
+        '\'ids\' that was not an Array of Strings.'
+      );
+    }
+
+    if (typeof field !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveRemoveIdFromManyRecordsField\' with ' +
+        '\'field\' that was not a String.'
+      );
+    }
+
+    const { id: idToRemove, conn } = this;
+
+    return archiveRemoveIdFromManyRecordsField(type, ids, field, idToRemove).run(conn);
+  }
+
+  /**
+   * Splices all of the 'idsToUpdate' from this resource's 'hasMany' relationship by setting each
+   * resource pointer's _archived to true.
+   *
+   * @async
+   * @private
+   * @param {String} inverseType
+   * @param {String} inverseField
+   * @param {String[]} idsToUpdate
+   * @param {String} idToSplice
+   * @return {Object}
+   */
+  archiveSpliceIdFromInverseField(inverseType, inverseField, idsToUpdate, idToSplice) {
+    if (typeof inverseType !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveSpliceIdFromInverseField\' with ' +
+        '\'inverseType\' that was not a String.'
+      );
+    }
+
+    if (typeof inverseField !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveSpliceIdFromInverseField\' with ' +
+        '\'inverseField\' that was not a String.'
+      );
+    }
+
+    if (!Array.isArray(idsToUpdate) || !idsToUpdate.every(item => typeof item === 'string')) {
+      throw new TypeError(
+        'Tried calling \'archiveSpliceIdFromInverseField\' with ' +
+        '\'idsToUpdate\' that was not an Array of Strings.'
+      );
+    }
+
+    if (typeof idToSplice !== 'string') {
+      throw new TypeError(
+        'Tried calling \'archiveSpliceIdFromInverseField\' with ' +
+        '\'idToSplice\' that was not a String.'
+      );
+    }
+
+    return archiveSpliceIdFromInverseField(inverseType, inverseField, idsToUpdate, idToSplice)
+      .run(this.conn);
+  }
+
+  /**
+   * Archives this resource and archives its corresponding relationships.
+   *
+   * ```javascript
+   * app.model('user').fetchResource('1').then(user => {
+   *   return user.archive();
+   * }).then(user => {
+   *   // Resource
+   * });
+   * ```
+   *
+   * @async
+   * @method archive
+   * @return {Promise<Resource>}
+   */
+  archive() {
+    const initial = {
+      _meta: {
+        _archived: true,
+      },
+    };
+
+    const updateObject = () => (
+      Object.keys(this.relationships).reduce((prev, curr) => {
+        const { relation, inverse: { relation: inverseRelation } } = this.relationship(curr);
+
+        if (relation === 'hasOne' && inverseRelation === 'belongsTo') {
+          return {
+            ...prev,
+            relationships: {
+              ...prev.relationships,
+              [curr]: {
+                ...prev.relationships[curr],
+                _archived: true,
+              },
+            },
+          };
+        }
+
+        return prev;
+      }, initial)
+    );
+
+    const { id } = this;
+
+    return r.table(this.schema.type)
+      .get(id)
+      .update(updateObject())
+      .run(this.conn)
+      .then(() => Promise.all(
+        Object.keys(this.relationships).map(field => {
+          const {
+            type,
+            relation,
+            inverse: {
+              relation: inverseRelation,
+              field: inverseField,
+              type: inverseType,
+            },
+          } = this.relationship(field);
+
+          if (relation === 'hasMany') {
+            switch (inverseRelation) {
+              case 'hasMany':
+                return this.fetch(field)
+                  .then(resources => {
+                    const idsToUpdate = resources.map(resource => resource.id);
+                    return ::this.archiveSpliceIdFromInverseField(
+                      inverseType,
+                      inverseField,
+                      idsToUpdate,
+                      id
+                    );
+                  });
+
+              case 'belongsTo':
+                return this.fetch(field)
+                  .then(resources =>
+                    Promise.all(resources.map(resource =>
+                      Promise.all([
+                        resource.archive(),
+                        resource.archiveRemoveIdFromRecordField(id, inverseField),
+                      ])
+                    ))
+                  );
+
+              case 'hasOne':
+                return this.fetch(field)
+                  .then(resources => {
+                    const ids = resources.map(resource => resource.id);
+                    return ::this.archiveRemoveIdFromManyRecordsField(type, ids, inverseField);
+                  });
+
+              default:
+                return true;
+            }
+          }
+
+          if (relation === 'hasOne') {
+            switch (inverseRelation) {
+              case 'hasMany':
+                return true;
+
+              case 'belongsTo':
+                return this.fetch(field)
+                  .then(resource =>
+                    Promise.all([
+                      resource.archive(),
+                      resource.archiveRemoveIdFromRecordField(id, inverseField),
+                    ])
+                  );
+
+              case 'hasOne':
+                return this.fetch(field)
+                  .then(resource => resource.archiveRemoveIdFromRecordField(id, inverseField));
+
+              default:
+                return true;
+            }
+          }
+
+          if (relation === 'belongsTo') {
+            switch (inverseRelation) {
+              case 'hasMany':
+                return true;
+
+              case 'belongsTo':
+                return true;
+
+              case 'hasOne':
+                return this.fetch(field)
+                  .then(resource => resource.archiveRemoveIdFromRecordField(id, inverseField));
+
+              default:
+                return true;
+            }
+          }
+
+          return true;
+        })
+      ))
+      .then(::this.reload);
+  }
+
+  /**
+   * Assigns a resource to this resource's `hasOne` or `belongsTo` relationship identified
+   * by `relationship`. The `data` argument can either be a Resource or String id.
+   *
+   * ```javascript
    * app.model('user').fetchResource('1').then(user => {
    *   return user.put('company', '1');
    * }).then(user => {
@@ -244,7 +558,8 @@ export default class Resource {
    *     return model.fetchResource('1');
    *   },
    * }).then(results => {
-   *   return results.user.put('company', results.company);
+   *   const { user, company } = results;
+   *   return user.put('company', company);
    * }).then(user => {
    *   // Resource
    * });
@@ -256,28 +571,66 @@ export default class Resource {
    * @return {Promise<Resource>}
    */
   put(relationship, data) {
+    const relationshipObject = this.relationship(relationship);
+    const { relation, inverse, field } = relationshipObject;
+    const { conn, schema, id } = this;
+
+    let idToPut;
+
+    if (relation !== 'hasOne' && relation !== 'belongsTo') {
+      throw new TypeError(
+        `Tried calling 'put' on a resource whose 'relationship' is '${relation}'. This method ` +
+        'only works for resources whose \'relationship\' is \'hasOne\' or \'belongsTo\'.'
+      );
+    }
+
+    if (!(data instanceof Resource || typeof data === 'string')) {
+      throw new TypeError(
+        'Tried calling \'put\' with \'data\' that was neither a Resource nor a String.'
+      );
+    }
+
+    const putData = (isCompliant) => {
+      if (!isCompliant) {
+        throw new Error(
+          'Tried calling \'put\' with \'data\' that violated Redink\'s update constraints.'
+        );
+      }
+
+      switch (inverse.relation) {
+        case 'hasMany':
+          return putIdToRecordField(schema.type, id, field, idToPut).run(conn);
+
+        case 'hasOne':
+          return r.do(
+            putIdToRecordField(schema.type, id, field, idToPut),
+            putIdToRecordField(inverse.type, idToPut, inverse.field, id)
+          ).run(conn);
+
+        default:
+          throw new TypeError(
+            'Tried calling \'put\' on a resource whose inverse \'relationship\' ' +
+            `is '${inverse.relation}'.`
+          );
+      }
+    };
+
+    // Ensure `id` is an id string
+    if (typeof data === 'string') idToPut = data;
+    if (data instanceof Resource) idToPut = data.id;
+
+    return isPutCompliant(relationshipObject, idToPut, conn)
+      .then(putData)
+      .then(::this.reload);
   }
 
   /**
-   * Removes this resource's `hasOne` relationship. The `data` argument can either be a `Resource`
-   * or String id of the resource to remove.
+   * Removes this resource's `hasOne` relationship. The `relationship` argument must be a
+   * relationship String.
    *
-   * ```
+   * ```javascript
    * app.model('user').fetchResource('1').then(user => {
    *   return user.remove('company');
-   * }).then(user => {
-   *   // Resource
-   * });
-   *
-   * app.model('user', 'company').map({
-   *   user(model) {
-   *     return model.fetchResource('1');
-   *   },
-   *   company(model) {
-   *     return model.fetchResource('1');
-   *   },
-   * }).then(results => {
-   *   return results.user.remove('company', results.company);
    * }).then(user => {
    *   // Resource
    * });
@@ -285,17 +638,55 @@ export default class Resource {
    *
    * @async
    * @param {String} relationship
-   * @param {(String|Resource)} data
    * @return {Promise<Resource>}
    */
-  remove(relationship, data) {
+  remove(relationship) {
+    const relationshipObject = this.relationship(relationship);
+    const { relation, inverse, record, field } = relationshipObject;
+    const { relation: inverseRelation } = inverse;
+    const { schema, id, conn } = this;
+
+    if (relation !== 'hasOne') {
+      throw new TypeError(
+        `Tried calling 'remove' on a resource whose 'relationship' is '${relation}'. This method ` +
+        'only works for resources whose \'relationship\' is \'hasOne\'.'
+      );
+    }
+
+    const removeData = () => {
+      if (!isRemoveCompliant(inverseRelation)) {
+        throw new Error(
+          'Tried calling \'remove\' with a relationship that violated Redink\'s update constraints.'
+        );
+      }
+
+      switch (inverseRelation) {
+        case 'hasMany':
+          return removeIdFromRecordField(schema.type, id, field, record.id)
+            .run(conn);
+
+        case 'hasOne':
+          return r.do(
+            removeIdFromRecordField(schema.type, id, field, record.id),
+            removeIdFromRecordField(inverse.type, record.id, inverse.field, id)
+          ).run(conn);
+
+        default:
+          throw new TypeError(
+            'Tried calling \'remove\' on a resource whose inverse \'relationship\' ' +
+            `is '${inverseRelation}'.`
+          );
+      }
+    };
+
+    return removeData().then(::this.reload);
   }
 
   /**
-   * Pushes data to this resource's `relationship`. The `data` can either be a `ResourceArray` or
-   * an array of Strings representing ids.
+   * Pushes data to this resource's `relationship`. The `data` can either be a `Resource`,
+   * `ResourceArray`, array of Strings representing ids, or a String id.
    *
-   * ```
+   * ```javascript
    * app.model('user').fetchResource('1').then(user => {
    *   return user.push('pets', ['1', '2']);
    * }).then(user => {
@@ -310,29 +701,71 @@ export default class Resource {
    *     return model.find({ filter: { name: 'Lassy' } }),
    *   },
    * }).then(results => {
-   *   return results.user.push('pets', results.pets);
+   *   const { user, pets } = results;
+   *   return user.push('pets', pets);
    * }).then(user => {
-   *   const newPets = user.relationship('pets'); // will include pets with ids '1' and '2'
+   *   const newPets = user.relationship('pets'); // will include pets with name of 'Lassy'
    * });
    * ```
    *
    * @async
    * @param {String} relationship
-   * @param {(String[]|ResourceArray)} ids
+   * @param {(String|String[]|Resource|ResourceArray)} data
    * @return {Promise<Resource>}
    */
   push(relationship, data) {
+    const relationshipObject = this.relationship(relationship);
+    const { relation, inverse, field, records } = relationshipObject;
+    const { schema, id, conn } = this;
+
+    let idsToPush;
+
+    if (relation !== 'hasMany') {
+      throw new TypeError(
+        `Tried calling 'push' on a resource whose 'relationship' is '${relation}'. This method ` +
+        'only works for resources whose \'relationship\' is \'hasMany\'.'
+      );
+    }
+
+    if (!isDataValidForSpliceAndPush(data)) {
+      throw new TypeError(
+        'Tried calling \'push\' with \'data\' that was neither a Resource, ResourceArray, ' +
+        'Array of Strings, nor a String ID.'
+      );
+    }
+
+    const checkIsCompliantAndPushData = (isCompliant) => {
+      if (!isCompliant) {
+        throw new Error(
+          'Tried calling \'push\' with \'data\' that violated Redink\'s update constraints.'
+        );
+      }
+
+      return r.do(
+        pushIdToOriginalField(schema.type, id, field, records, idsToPush),
+        pushIdToInverseField(inverse.type, inverse.field, records, idsToPush, id)
+      ).run(conn);
+    };
+
+    // Ensure `ids` is an array of id strings
+    if (Array.isArray(data)) idsToPush = data;
+    if (data instanceof ResourceArray) idsToPush = data.map(resource => resource.id);
+    if (typeof data === 'string') idsToPush = [data];
+
+    return isPushCompliant(relationshipObject, idsToPush, conn)
+      .then(checkIsCompliantAndPushData)
+      .then(::this.reload);
   }
 
   /**
-   * Pushes data to this resource's `relationship`. The `data` can either be a `Resource` or
-   * a String id.
+   * Splices data from the resource's `relationship`. The `data` can either be a `Resource`,
+   * `ResourceArray`, array of Strings representing ids, or a String id.
    *
-   * ```
+   * ```javascript
    * app.model('user').fetchResource('1').then(user => {
-   *   return user.put('company', '1');
+   *   return user.splice('pets', ['1', '2']);
    * }).then(user => {
-   *   const newCompany = user.relationship('company'); // will be a company with id of '1'
+   *   const newPets = user.relationship('pets'); // will not include pets with ids '1' and '2'
    * });
    *
    * app.model('user', 'animal:pets').map({
@@ -343,26 +776,59 @@ export default class Resource {
    *     return model.find({ filter: { name: 'Lassy' } }),
    *   },
    * }).then(results => {
-   *   return results.user.push('pets', results.pets);
+   *   const { user, pets } = results;
+   *   return user.push('pets', pets);
    * }).then(user => {
-   *   const newPets = user.relationship('pets'); // will include pets with ids '1' and '2'
+   *   const newPets = user.relationship('pets'); // will not include any pets with the name 'Lassy'
    * });
    * ```
    *
    * @async
    * @param {String} relationship
-   * @param {(String[]|ResourceArray)} ids
+   * @param {(String|String[]|Resource|ResourceArray)} data
    * @return {Promise<Resource>}
    */
-  pop(relationship, data) {
-    const { relation } = this.relationship(relationship);
+  splice(relationship, data) {
+    const relationshipObject = this.relationship(relationship);
+    const { relation, inverse, field } = relationshipObject;
+    const { relation: inverseRelation } = inverse;
+    const { schema, id, conn } = this;
+
+    let idsToSplice;
 
     if (relation !== 'hasMany') {
       throw new TypeError(
-        `Tried calling 'pop' on a relationship whose relation is '${relation}'. This method only ` +
-        'works for relationships whose relation is \'hasMany\'.'
+        `Tried calling 'splice' on a resource whose 'relationship' is '${relation}'. This method ` +
+        'only works for resources whose \'relationship\' is \'hasMany\'.'
       );
     }
+
+    if (!isDataValidForSpliceAndPush(data)) {
+      throw new TypeError(
+        'Tried calling \'splice\' with \'data\' that was neither a Resource, ResourceArray, ' +
+        'Array of Strings, nor a String ID.'
+      );
+    }
+
+    const spliceData = () => {
+      if (!isSpliceCompliant(inverseRelation)) {
+        throw new Error(
+          'Tried calling \'splice\' with a relationship that violated Redink\'s update constraints.'
+        );
+      }
+
+      // Ensure `ids` is an array of id strings
+      if (Array.isArray(data)) idsToSplice = data;
+      if (data instanceof ResourceArray) idsToSplice = data.map(resource => resource.id);
+      if (typeof data === 'string') idsToSplice = [data];
+
+      return r.do(
+        spliceIdFromOriginalField(schema.type, field, id, idsToSplice),
+        spliceIdFromInverseField(inverse.type, inverse.field, idsToSplice, id)
+      ).run(conn);
+    };
+
+    return spliceData().then(::this.reload);
   }
 
   /**

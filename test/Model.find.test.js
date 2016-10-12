@@ -11,8 +11,8 @@ test('should find all users', async t => {
     const users = await model('user').find();
 
     t.truthy(users instanceof ResourceArray);
-    t.is(users.size(), 2);
-    t.is(users.first().id, '1');
+    t.is(users.size(), 3);
+    t.is(users.first().id, '3');
     t.is(users.last().id, '2');
   } catch (err) {
     t.fail(err.message);

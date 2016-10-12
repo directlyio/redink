@@ -1,20 +1,23 @@
-/* eslint-disable no-param-reassign */
 export default (table, id, options) => {
-  table = table.get(id);
+  let row = table.get(id);
 
-  if (typeof options !== 'object') return table;
+  if (typeof options !== 'object') return row;
 
   if ('pluck' in options) {
     // always pluck the id
-    options.pluck.id = true;
-    table = table.pluck(options.pluck);
+    row = row.pluck({
+      ...options.pluck,
+      id: true,
+    });
   }
 
   if ('without' in options) {
     // disallow forgoing the id
-    options.without.id = false;
-    table = table.without(options.without);
+    row = row.without({
+      ...options.without,
+      id: false,
+    });
   }
 
-  return table;
+  return row;
 };

@@ -14,9 +14,10 @@ test('should map over all users with a synchronous function', async t => {
       return user.attribute('name');
     });
 
-    t.is(names.length, 2);
+    t.is(names.length, 3);
     t.truthy(names.includes('Bob'));
     t.truthy(names.includes('Billy'));
+    t.truthy(names.includes('Joe'));
     t.truthy(users instanceof ResourceArray);
   } catch (err) {
     t.fail(err.message);

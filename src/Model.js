@@ -1,12 +1,15 @@
 import r from 'rethinkdb';
 import Resource from './Resource';
 import ResourceArray from './ResourceArray';
+import isCreateCompliant from './constraints/create';
 
 import {
   mergeRelationships,
   requiresIndex,
   retrieveManyRecords,
   retrieveSingleRecord,
+  normalizeRecord,
+  syncRelationships,
 } from './utils';
 
 export default class Model {
@@ -231,24 +234,45 @@ export default class Model {
     const { conn, schema } = this;
     const { type } = schema;
 
-    let createdRecordId;
-    let createdResource;
+    const checkComplianceAndNormalizeRecord = (compliant) => {
+      if (!compliant) {
+        throw new Error(
+          'Tried  to call \'create\' with record whose relationships are invalid.'
+        );
+      }
 
-    return r.table(type).insert(record).run(conn)
+      return normalizeRecord(record, schema);
+    };
 
-      // retrieve the record that was just created
-      .then(({ generated_keys: keys }) => {
-        createdRecordId = keys[0];
-        return retrieveSingleRecord(type, createdRecordId, options).run(conn);
-      })
+    const createRecord = (normalizedRecord) => {
+      let createdRecordId;
+      let createdResource;
 
-      // create the resource and sync its relationships
-      .then(createdRecord => {
-        createdResource = new Resource(conn, schema, createdRecord);
-        return createdResource.syncRelationships();
-      })
+      return r.table(type).insert(normalizedRecord).run(conn)
 
-      // return the resource
-      .then(() => createdResource);
+        // retrieve the record that was just created
+        .then(({ generated_keys: keys }) => {
+          const table = r.table(type);
+          createdRecordId = keys[0];
+
+          return retrieveSingleRecord(table, createdRecordId, options).run(conn);
+        })
+
+        // create the resource and sync its relationships
+        .then(createdRecord => {
+          createdResource = new Resource(conn, schema, createdRecord);
+          const syncRelationshipsArray = syncRelationships(record, schema, createdRecordId);
+
+          return r.do(syncRelationshipsArray).run(conn);
+        })
+
+        // return the resource
+        .then(() => createdResource);
+    };
+
+    // check record and it's relationships for Redink constraints
+    return isCreateCompliant(record, schema, conn)
+      .then(checkComplianceAndNormalizeRecord)
+      .then(createRecord);
   }
 }

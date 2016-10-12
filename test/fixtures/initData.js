@@ -8,12 +8,14 @@ export default {
       friends: [{
         id: '2',
         _archived: false,
+        _related: true,
       }],
       company: {
         id: '1',
         _archived: false,
+        _related: true,
       },
-      meta: {
+      _meta: {
         _archived: false,
       },
     }, {
@@ -22,8 +24,16 @@ export default {
       friends: [{
         id: '1',
         _archived: false,
+        _related: true,
       }],
-      meta: {
+      _meta: {
+        _archived: false,
+      },
+    }, {
+      id: '3',
+      name: 'Joe',
+      friends: [],
+      _meta: {
         _archived: false,
       },
     }],
@@ -33,8 +43,9 @@ export default {
       author: {
         id: '1',
         _archived: false,
+        _related: true,
       },
-      meta: {
+      _meta: {
         _archived: false,
       },
     }],
@@ -44,8 +55,20 @@ export default {
       address: {
         id: '1',
         _archived: false,
+        _related: true,
       },
-      meta: {
+      _meta: {
+        _archived: false,
+      },
+    }, {
+      id: '2',
+      name: 'Google',
+      address: {
+        id: '2',
+        _archived: false,
+        _related: true,
+      },
+      _meta: {
         _archived: false,
       },
     }],
@@ -55,8 +78,20 @@ export default {
       company: {
         id: '1',
         _archived: false,
+        _related: true,
       },
-      meta: {
+      _meta: {
+        _archived: false,
+      },
+    }, {
+      id: '2',
+      city: 'Grand Lake',
+      company: {
+        id: '2',
+        _archived: false,
+        _related: true,
+      },
+      _meta: {
         _archived: false,
       },
     }],
