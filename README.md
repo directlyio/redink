@@ -7,11 +7,12 @@ RethinkDB ORM
 ## Installation
 ```sh
 $ npm install redink
+$ npm install redink-schema
 ```
 
 ## Define schemas
 ```js
-import { schema, hasMany, hasOne, belongsTo } from 'redink';
+import schema, { hasMany, hasOne, belongsTo } from 'redink-schema';
 
 export const user = schema('user', {
   attributes: {
