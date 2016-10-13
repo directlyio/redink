@@ -72,19 +72,14 @@ export default class Resource {
       if (schema.hasRelationship(field)) {
         const relationship = schema.relationship(field);
         const relation = relationship.relation;
-        const inverseRelation = relationship.inverse.relation;
+        const recordOrRecords = relation === 'hasMany'
+          ? 'records'
+          : 'record';
 
         this.relationships[field] = {
           ...relationship,
+          [recordOrRecords]: this.relationships[field].records = record[field],
         };
-
-        if (relation === 'hasMany') {
-          if (inverseRelation === 'hasMany') this.relationships[field].records = record[field];
-          else return;
-        }
-
-        this.relationships[field].record = record[field];
-        return;
       }
     });
   }

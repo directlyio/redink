@@ -16,15 +16,16 @@ test('should fetch a single user', async t => {
   }
 });
 
-test('should fetch a single user with some sideloaded relationships', async t => {
+test('should fetch a single user with sideloaded relationships', async t => {
   try {
     const user = await model('user').fetchResource('1', {
-      include: { friends: true, company: true },
+      include: { friends: true, company: true, blogs: true },
     });
 
     t.truthy(user instanceof Resource);
     t.is(user.id, '1');
     t.is(user.relationship('friends').records[0].name, 'Billy');
+    t.is(user.relationship('blogs').records[0].title, 'How to Blog');
     t.is(user.relationship('company').record.name, 'Apple');
   } catch (err) {
     t.fail(err.message);

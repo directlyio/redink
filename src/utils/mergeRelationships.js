@@ -1,4 +1,5 @@
 import r from 'rethinkdb';
+import requiresIndex from './requiresIndex';
 import retrieveManyRecords from './retrieveManyRecords';
 import retrieveSingleRecord from './retrieveSingleRecord';
 
@@ -45,13 +46,16 @@ export default (table, schema, options) => {
       !Boolean(options.include[field])
     ) return {};
 
-    const { type, relation } = relationships[field];
-    const hasFields = record.hasFields(field);
-
+    const { type, relation, inverse } = relationships[field];
     let relatedTable = r.table(type);
 
     if (relation === 'hasMany') {
-      relatedTable = relatedTable.getAll(r.args(record(field)('id')));
+      if (requiresIndex(relation, inverse.relation)) {
+        relatedTable = relatedTable.getAll(record('id'), { index: inverse.field });
+      } else {
+        relatedTable = relatedTable.getAll(r.args(record(field)('id')));
+      }
+
       relatedTable = retrieveManyRecords(relatedTable, options.include[field]);
       relatedTable = relatedTable.coerceTo('array');
     } else {
@@ -62,9 +66,7 @@ export default (table, schema, options) => {
       );
     }
 
-    return r.branch(hasFields, {
-      [field]: relatedTable,
-    }, {});
+    return { [field]: relatedTable };
   })));
 
   // eslint-disable-next-line
