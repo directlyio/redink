@@ -1,4 +1,6 @@
 import Redink from './Redink';
+import Resource from './Resource';
+import ResourceArray from './ResourceArray';
 
 function singleton() {
   if (singleton.instance) {
@@ -32,6 +34,7 @@ function singleton() {
 
 export const model = (...args) => singleton().instance().model(...args);
 export const disconnect = () => singleton().instance().disconnect();
+export const isResource = (resource) => resource instanceof Resource;
+export const isResourceArray = (resourceArray) => resourceArray instanceof ResourceArray;
 
-export schema, { hasOne, belongsTo, hasMany } from 'redink-schema';
 export default singleton;
