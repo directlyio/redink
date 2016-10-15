@@ -175,6 +175,7 @@ export default class Resource {
   /**
    * Returns an updated version of the resource.
    *
+   * @async
    * @method reload
    * @param {Options} [options={}]
    * @return {Promise<Resource>}
@@ -203,6 +204,7 @@ export default class Resource {
    * });
    * ```
    *
+   * @async
    * @method fetch
    * @param {String} relationship
    * @param {Object} [options={}]
@@ -260,6 +262,8 @@ export default class Resource {
    *   // Resource
    * });
    * ```
+   *
+   * @async
    * @method update
    * @param {Object} fields
    * @return {Promise<Resource>}
@@ -554,6 +558,7 @@ export default class Resource {
    * ```
    *
    * @async
+   * @method put
    * @param {String} relationship
    * @param {(String|Resource)} data
    * @param {Object} [options={}]
@@ -627,6 +632,7 @@ export default class Resource {
    * ```
    *
    * @async
+   * @method remove
    * @param {String} relationship
    * @param {Object} [options={}]
    * @return {Promise<Resource>}
@@ -700,6 +706,7 @@ export default class Resource {
    * ```
    *
    * @async
+   * @method push
    * @param {String} relationship
    * @param {(String|String[]|Resource|ResourceArray)} data
    * @param {Object} [options={}]
@@ -770,13 +777,14 @@ export default class Resource {
    *   },
    * }).then(results => {
    *   const { user, pets } = results;
-   *   return user.push('pets', pets);
+   *   return user.splice('pets', pets);
    * }).then(user => {
    *   const newPets = user.relationship('pets'); // will not include any pets with the name 'Lassy'
    * });
    * ```
    *
    * @async
+   * @method splice
    * @param {String} relationship
    * @param {(String|String[]|Resource|ResourceArray)} data
    * @param {Object} [options={}]
@@ -838,7 +846,8 @@ export default class Resource {
   }
 
   /**
-   * Returns a plain object with an `attributes` key, a `relationships` key, and a `meta` key.
+   * Returns a plain object with the `id` key, an `attributes` key, a `relationships` key, and a
+   * `meta` key.
    *
    * @method toObject
    * @return {Object}

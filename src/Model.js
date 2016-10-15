@@ -85,6 +85,7 @@ export default class Model {
    * Finds the first resource (out of potentially many) that matches the criteria in `options.`
    *
    * @async
+   * @method findOne
    * @param {Object} [options={}]
    * @return {Promise<Resource>}
    */
@@ -160,6 +161,7 @@ export default class Model {
    * ```
    *
    * @async
+   * @method findRelated
    * @param {String} id - The id of the parent resource.
    * @param {String} relationship - The relationship to the parent.
    * @param {Object} [options={}]
@@ -204,6 +206,7 @@ export default class Model {
    * ```
    *
    * @async
+   * @method fetchResource
    * @param {String} id - The ID of the resource to retrieve.
    * @param {Object} [options={}]
    * @returns {Promise<Resource>}
@@ -239,6 +242,7 @@ export default class Model {
    * ```
    *
    * @async
+   * @method create
    * @param {Object} record
    * @param {Object} [options={}]
    * @returns {Promise<Resource>}
