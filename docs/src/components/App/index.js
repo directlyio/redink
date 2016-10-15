@@ -51,7 +51,9 @@ const App = ({ children }) => (
         </div>
       </div>
       <div className={styles.outletBody}>
-        {children}
+        <div className={styles.outletWidth}>
+          {children}
+        </div>
       </div>
     </div>
   </div>

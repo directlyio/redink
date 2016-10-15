@@ -1,6 +1,5 @@
 // modified from: https://gist.github.com/aVolpe/b364a8fcd10f1ba833d97e9ab278f42c
 import React, { Component } from 'react';
-import { Icon } from 'react-fa';
 
 class Gist extends Component {
   static propTypes = {
@@ -56,7 +55,7 @@ class Gist extends Component {
 
   render() {
     if (this.state.loading) {
-      return <Icon name="spinner" spin />;
+      return <div>...</div>;
     }
 
     return <div dangerouslySetInnerHTML={{ __html: this.state.src }} />;

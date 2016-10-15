@@ -5,7 +5,7 @@ import styles from './styles.scss';
 const Home = () => (
   <div className={styles.wrapper}>
     <h1 className="heading">
-      Easy RethinkDB model layer that makes business-logic suck less.
+      RethinkDB model layer that makes complex business-logic easy
     </h1>
     <p className="paragraph">
       Redink provides some simple abtractions that make performing complex relationial operations

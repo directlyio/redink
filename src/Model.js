@@ -169,7 +169,14 @@ export default class Model {
    */
   findRelated(id, relationship, options = {}) {
     const { conn, schema, schema: { type: parentType } } = this;
-    const { type: relatedType, relation, inverse } = schema.relationships[relationship];
+
+    const {
+      type: relatedType,
+      schema: relatedSchema,
+      relation,
+      inverse,
+    } = schema.relationships[relationship];
+
     let table = r.table(relatedType);
 
     if (relation === 'hasMany') {
@@ -187,12 +194,12 @@ export default class Model {
     }
 
     table = applyOptions(table, options);
-    table = mergeRelationships(table, schema, options);
+    table = mergeRelationships(table, relatedSchema, options);
 
     return table.run(conn)
       .then(recordOrRecords => {
-        if (relation === 'hasMany') return new ResourceArray(conn, schema, recordOrRecords);
-        return new Resource(conn, schema, recordOrRecords);
+        if (relation === 'hasMany') return new ResourceArray(conn, relatedSchema, recordOrRecords);
+        return new Resource(conn, relatedSchema, recordOrRecords);
       });
   }
 
