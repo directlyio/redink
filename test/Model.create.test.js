@@ -10,18 +10,15 @@ test('should create a user and sync it\'s relationships', async t => {
   try {
     const user = await model('user').create({
       name: 'CJ',
-      blogs: [],
       friends: ['1'],
       company: '1',
     });
 
-    const employees = await model('company').fetchResource('1').then(company => (
-      company.fetch('employees').then(employeesArray => employeesArray)
-    ));
+    const employees = await model('company').fetchResource('1')
+      .then(res => res.fetch('employees'));
 
-    const friends = await model('user').fetchResource('1').then(userResource => (
-      userResource.fetch('friends').then(friendsArray => friendsArray)
-    ));
+    const friends = await model('user').fetchResource('1')
+      .then(res => res.fetch('friends'));
 
     t.truthy(employees instanceof ResourceArray);
     t.truthy(friends instanceof ResourceArray);
