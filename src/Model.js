@@ -4,11 +4,10 @@ import ResourceArray from './ResourceArray';
 import isCreateCompliant from './constraints/create';
 
 import {
+  applyOptions,
   mergeRelationships,
-  requiresIndex,
-  retrieveManyRecords,
-  retrieveSingleRecord,
   normalizeRecord,
+  requiresIndex,
   syncRelationships,
 } from './utils';
 
@@ -74,7 +73,7 @@ export default class Model {
 
     let table = r.table(type);
 
-    table = retrieveManyRecords(table, options);
+    table = applyOptions(table, options);
     table = mergeRelationships(table, schema, options);
     table = table.coerceTo('array');
 
@@ -102,9 +101,12 @@ export default class Model {
    * });
    * ```
    *
+   * @async
+   * @method findByIndex
    * @param {String} index - The index name.
    * @param {*} value
-   * @return {ResourceArray}
+   * @param {Object} options
+   * @return {Promise<ResourceArray>}
    *
    * @todo Add test.
    */
@@ -115,7 +117,7 @@ export default class Model {
     let table = r.table(type);
 
     table = table.getAll(value, { index });
-    table = retrieveManyRecords(table, options);
+    table = applyOptions(table, options);
     table = mergeRelationships(table, schema, options);
     table = table.coerceTo('array');
 
@@ -123,6 +125,17 @@ export default class Model {
       .then(records => new ResourceArray(conn, schema, records));
   }
 
+  /**
+   * Finds a single resource from `index` that matches `value` and that matches the criteria in
+   * `options`.
+   *
+   * @async
+   * @method findOneByIndex
+   * @param {String} index - The index name.
+   * @param {*} value
+   * @param {Object} options
+   * @return {Promise<Resource>}
+   */
   findOneByIndex(index, value, options = {}) {
     return this.findByIndex(index, value, options).then(resources => resources.first());
   }
@@ -155,7 +168,6 @@ export default class Model {
   findRelated(id, relationship, options = {}) {
     const { conn, schema, schema: { type: parentType } } = this;
     const { type: relatedType, relation, inverse } = schema.relationships[relationship];
-
     let table = r.table(relatedType);
 
     if (relation === 'hasMany') {
@@ -167,19 +179,19 @@ export default class Model {
         );
       }
 
-      table = retrieveManyRecords(table, options);
-      table = mergeRelationships(table, schema, options);
       table = table.coerceTo('array');
-
-      return table.run(conn)
-        .then(records => new ResourceArray(conn, schema, records));
+    } else {
+      table = table.get(id);
     }
 
-    table = retrieveSingleRecord(table, id, options);
+    table = applyOptions(table, options);
     table = mergeRelationships(table, schema, options);
 
     return table.run(conn)
-      .then(record => new Resource(conn, schema, record));
+      .then(recordOrRecords => {
+        if (relation === 'hasMany') return new ResourceArray(conn, schema, recordOrRecords);
+        return new Resource(conn, schema, recordOrRecords);
+      });
   }
 
   /**
@@ -200,7 +212,8 @@ export default class Model {
     const { conn, schema } = this;
     let table = r.table(schema.type);
 
-    table = retrieveSingleRecord(table, id, options);
+    table = table.get(id);
+    table = applyOptions(table, options);
     table = mergeRelationships(table, schema, options);
 
     return table.run(conn)
@@ -217,7 +230,7 @@ export default class Model {
    * model('user').create({
    *   name: 'Dylan',
    *   email: 'dylanslack@gmail.com',
-   *   password: 'supersecret',
+   *   password: 'hashedpassword',
    *   pets: [ '1', '2', '3' ],
    *   company: '1',
    * }).then(user => {
@@ -237,7 +250,7 @@ export default class Model {
     const checkComplianceAndNormalizeRecord = (compliant) => {
       if (!compliant) {
         throw new Error(
-          'Tried  to call \'create\' with record whose relationships are invalid.'
+          'Tried to create a record, but \'record\' had some invalid relationships.'
         );
       }
 
@@ -252,10 +265,11 @@ export default class Model {
 
         // retrieve the record that was just created
         .then(({ generated_keys: keys }) => {
-          const table = r.table(type);
+          let table = r.table(type);
           createdRecordId = keys[0];
+          table = table.get(createdRecordId);
 
-          return retrieveSingleRecord(table, createdRecordId, options).run(conn);
+          return applyOptions(table, options).run(conn);
         })
 
         // create the resource and sync its relationships

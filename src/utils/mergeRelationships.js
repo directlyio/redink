@@ -1,7 +1,6 @@
 import r from 'rethinkdb';
+import applyOptions from './applyOptions';
 import requiresIndex from './requiresIndex';
-import retrieveManyRecords from './retrieveManyRecords';
-import retrieveSingleRecord from './retrieveSingleRecord';
 
 /**
  * Determines which relationships to sideload in the table based off the schema's relationships
@@ -56,15 +55,12 @@ export default (table, schema, options) => {
         relatedTable = relatedTable.getAll(r.args(record(field)('id')));
       }
 
-      relatedTable = retrieveManyRecords(relatedTable, options.include[field]);
       relatedTable = relatedTable.coerceTo('array');
     } else {
-      relatedTable = retrieveSingleRecord(
-        relatedTable,
-        record(field)('id'),
-        options.include[field],
-      );
+      relatedTable = relatedTable.get(record(field)('id'));
     }
+
+    relatedTable = applyOptions(relatedTable, options.include[field]);
 
     return { [field]: relatedTable };
   })));

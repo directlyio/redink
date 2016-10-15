@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 import r from 'rethinkdb';
 import ResourceArray from './ResourceArray';
+
 import {
   isPushCompliant,
   isPutCompliant,
@@ -9,12 +10,11 @@ import {
 } from './constraints/update';
 
 import {
+  applyOptions,
+  getArchiveOriginalUpdateObject,
+  isDataValidForSpliceAndPush,
   mergeRelationships,
   requiresIndex,
-  retrieveManyRecords,
-  retrieveSingleRecord,
-  isDataValidForSpliceAndPush,
-  getArchiveOriginalUpdateObject,
 } from './utils';
 
 import {
@@ -184,7 +184,9 @@ export default class Resource {
 
     let table = r.table(schema.type);
 
-    table = retrieveSingleRecord(table, id, options);
+    table = table.get(id);
+    table = applyOptions(table, options);
+    table = mergeRelationships(table, schema, options);
 
     return table.run(conn)
       .then(record => new Resource(conn, schema, record));
@@ -231,19 +233,19 @@ export default class Resource {
         table = table.getAll(r.args(relatedRecords.map(record => record.id)));
       }
 
-      table = retrieveManyRecords(table, options);
-      table = mergeRelationships(table, schema, options);
       table = table.coerceTo('array');
-
-      return table.run(conn)
-        .then(records => new ResourceArray(conn, schema, records));
+    } else {
+      table = table.get(relatedRecord.id);
     }
 
-    table = retrieveSingleRecord(table, relatedRecord.id, options);
+    table = applyOptions(table, options);
     table = mergeRelationships(table, schema, options);
 
     return table.run(conn)
-      .then(record => new Resource(conn, schema, record));
+      .then(recordOrRecords => {
+        if (relation === 'hasMany') return new ResourceArray(conn, schema, recordOrRecords);
+        return new Resource(conn, schema, recordOrRecords);
+      });
   }
 
   /**
@@ -262,11 +264,12 @@ export default class Resource {
    * @param {Object} fields
    * @return {Promise<Resource>}
    */
-  update(fields) {
+  update(fields, options = {}) {
     const { schema, id, conn } = this;
     const { type } = schema;
 
     const table = r.table(type);
+    const reloadWithOptions = () => this.reload(options);
 
     Object.keys(fields).forEach(field => {
       if (!schema.hasAttribute(field)) delete fields[field];
@@ -276,7 +279,7 @@ export default class Resource {
       .get(id)
       .update(fields)
       .run(conn)
-      .then(::this.reload);
+      .then(reloadWithOptions);
   }
 
   /**
@@ -347,8 +350,8 @@ export default class Resource {
   }
 
   /**
-   * Splices all of the 'idsToUpdate' from this resource's 'hasMany' relationship by setting each
-   * resource pointer's _archived to true.
+   * Splices all of the `idsToUpdate` from this resource's 'hasMany' relationship by setting each
+   * resource pointer's `_archived` to true.
    *
    * @async
    * @private
@@ -404,18 +407,20 @@ export default class Resource {
    *
    * @async
    * @method archive
+   * @param {Object} [options={}]
    * @return {Promise<Resource>}
    */
-  archive() {
+  archive(options = {}) {
     const { schema: { type }, id, conn } = this;
     const updateObject = getArchiveOriginalUpdateObject(this);
+    const reloadWithOptions = () => this.reload(options);
 
     return r.table(type)
       .get(id)
       .update(updateObject)
       .run(conn)
       .then(::this.recursivelyArchive)
-      .then(::this.reload);
+      .then(reloadWithOptions);
   }
 
   /**
@@ -551,12 +556,14 @@ export default class Resource {
    * @async
    * @param {String} relationship
    * @param {(String|Resource)} data
+   * @param {Object} [options={}]
    * @return {Promise<Resource>}
    */
-  put(relationship, data) {
+  put(relationship, data, options = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
     const { conn, schema, id } = this;
+    const reloadWithOptions = () => this.reload(options);
 
     let idToPut;
 
@@ -604,7 +611,7 @@ export default class Resource {
 
     return isPutCompliant(relationshipObject, idToPut, conn)
       .then(putData)
-      .then(::this.reload);
+      .then(reloadWithOptions);
   }
 
   /**
@@ -621,13 +628,15 @@ export default class Resource {
    *
    * @async
    * @param {String} relationship
+   * @param {Object} [options={}]
    * @return {Promise<Resource>}
    */
-  remove(relationship) {
+  remove(relationship, options = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, record, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
     const { schema, id, conn } = this;
+    const reloadWithOptions = () => this.reload(options);
 
     if (relation !== 'hasOne') {
       throw new TypeError(
@@ -645,8 +654,7 @@ export default class Resource {
 
       switch (inverseRelation) {
         case 'hasMany':
-          return removeIdFromRecordField(schema.type, id, field, record.id)
-            .run(conn);
+          return removeIdFromRecordField(schema.type, id, field, record.id).run(conn);
 
         case 'hasOne':
           return r.do(
@@ -662,7 +670,7 @@ export default class Resource {
       }
     };
 
-    return removeData().then(::this.reload);
+    return removeData().then(reloadWithOptions);
   }
 
   /**
@@ -694,12 +702,14 @@ export default class Resource {
    * @async
    * @param {String} relationship
    * @param {(String|String[]|Resource|ResourceArray)} data
+   * @param {Object} [options={}]
    * @return {Promise<Resource>}
    */
-  push(relationship, data) {
+  push(relationship, data, options = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field, records } = relationshipObject;
     const { schema, id, conn } = this;
+    const reloadWithOptions = () => this.reload(options);
 
     let idsToPush;
 
@@ -737,7 +747,7 @@ export default class Resource {
 
     return isPushCompliant(relationshipObject, idsToPush, conn)
       .then(checkIsCompliantAndPushData)
-      .then(::this.reload);
+      .then(reloadWithOptions);
   }
 
   /**
@@ -769,13 +779,15 @@ export default class Resource {
    * @async
    * @param {String} relationship
    * @param {(String|String[]|Resource|ResourceArray)} data
+   * @param {Object} [options={}]
    * @return {Promise<Resource>}
    */
-  splice(relationship, data) {
+  splice(relationship, data, options = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
     const { schema, id, conn } = this;
+    const reloadWithOptions = () => this.reload(options);
 
     let idsToSplice;
 
@@ -811,7 +823,7 @@ export default class Resource {
       ).run(conn);
     };
 
-    return spliceData().then(::this.reload);
+    return spliceData().then(reloadWithOptions);
   }
 
   /**
