@@ -47,3 +47,21 @@ test('should fail to create a user because the company doesn\'t exist', async t 
     );
   }
 });
+
+test('should create a blog that belongs to a user', async t => {
+  try {
+    const blog = await model('blog').create({
+      title: 'Super Cool Blog',
+      author: '1',
+    });
+
+    const user = await model('user').fetchResource('1', {
+      include: { blogs: true },
+    });
+
+    t.truthy(blog instanceof Resource);
+    t.is(user.retrieve('blogs').length, 2);
+  } catch (err) {
+    t.fail(err.message);
+  }
+});
