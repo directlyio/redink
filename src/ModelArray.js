@@ -1,4 +1,5 @@
 import Promise from 'bluebird';
+import { hasOwnProperty } from './utils';
 
 export default class ModelArray {
   /**
@@ -32,7 +33,7 @@ export default class ModelArray {
    * @return {Boolean}
    */
   hasModel(type) {
-    return this.models.hasOwnProperty(type);
+    return hasOwnProperty(this.models, type);
   }
 
   /**

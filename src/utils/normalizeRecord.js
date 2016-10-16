@@ -1,4 +1,6 @@
 /* eslint-disable no-param-reassign */
+import hasOwnProperty from './hasOwnProperty';
+
 export default (record, schema) => {
   const normalizedRecord = {
     ...record,
@@ -20,7 +22,7 @@ export default (record, schema) => {
     const { field, relation, inverse } = relationshipObject;
     const data = record[field];
 
-    if (record.hasOwnProperty(field)) {
+    if (hasOwnProperty(record, field)) {
       switch (relation) {
         case 'hasMany':
           if (inverse.relation === 'hasMany') normalizedRecord[field] = normalizeMany(data);

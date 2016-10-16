@@ -1,3 +1,5 @@
+import { hasOwnProperty } from '../../utils';
+
 import {
   isHasManyCompliant,
   isHasOneCompliant,
@@ -33,7 +35,7 @@ export default (record, schema, conn) => {
       if (relation === 'hasMany' && inverse.relation === 'hasMany') checkManyToMany(data, field);
       if (relation === 'belongsTo') checkBelongsTo(data, field);
 
-      if (!record.hasOwnProperty(field)) return [...prev, true];
+      if (!hasOwnProperty(record, field)) return [...prev, true];
 
       switch (relation) {
         case 'hasMany':

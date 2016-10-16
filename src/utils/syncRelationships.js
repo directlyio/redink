@@ -1,4 +1,6 @@
 /* eslint-disable no-param-reassign */
+import hasOwnProperty from './hasOwnProperty';
+
 import {
   pushIdToInverseField,
   putIdToRecordField,
@@ -17,7 +19,7 @@ export default (record, schema, id) => {
 
     let queryToPush;
 
-    if (record.hasOwnProperty(field)) {
+    if (hasOwnProperty(record, field)) {
       if (inverseRelation === 'hasMany') {
         const dataCoercedToArray = Array.isArray(data) ? data : [data];
         queryToPush = pushIdToInverseField(inverseType, inverseField, [], dataCoercedToArray, id);

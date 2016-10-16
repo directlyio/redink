@@ -1,5 +1,6 @@
 import r from 'rethinkdb';
 import applyOptions from './applyOptions';
+import hasOwnProperty from './hasOwnProperty';
 import requiresIndex from './requiresIndex';
 
 /**
@@ -41,7 +42,7 @@ export default (table, schema, options) => {
 
   const fieldsToMerge = (record) => r({}).merge(r.args(fields.map(field => {
     if (
-      !options.include.hasOwnProperty(field) ||
+      !hasOwnProperty(options.include, field) ||
       !Boolean(options.include[field])
     ) return {};
 

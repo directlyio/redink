@@ -1,14 +1,15 @@
-/* eslint-disable no-param-reassign */
+import hasOwnProperty from './hasOwnProperty';
+
 export default (table, options) => {
   if (typeof options !== 'object') return table;
 
   let row = table;
 
-  if (options.hasOwnProperty('filter')) {
+  if (hasOwnProperty(options, 'filter')) {
     row = row.filter(options.filter);
   }
 
-  if (options.hasOwnProperty('pluck')) {
+  if (hasOwnProperty(options, 'pluck')) {
     // always pluck the id
     row = row.pluck({
       ...options.include,
@@ -16,7 +17,7 @@ export default (table, options) => {
     });
   }
 
-  if (options.hasOwnProperty('without')) {
+  if (hasOwnProperty(options, 'without')) {
     // disallow forgoing the id
     row = row.without({
       ...options.without,
@@ -24,19 +25,19 @@ export default (table, options) => {
     });
   }
 
-  if (options.hasOwnProperty('between')) {
+  if (hasOwnProperty(options, 'between')) {
     row = row.between(options.between);
   }
 
-  if (options.hasOwnProperty('skip')) {
+  if (hasOwnProperty(options, 'skip')) {
     row = row.skip(options.skip);
   }
 
-  if (options.hasOwnProperty('limit')) {
+  if (hasOwnProperty(options, 'limit')) {
     row = row.limit(options.limit);
   }
 
-  if (options.hasOwnProperty('orderBy')) {
+  if (hasOwnProperty(options, 'orderBy')) {
     row = row.orderBy(options.orderBy);
   }
 
