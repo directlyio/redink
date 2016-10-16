@@ -250,6 +250,42 @@ export default class Resource {
   }
 
   /**
+   * Returns the resource pointer(s) based on the multipicity of `relationship`. For example,
+   * if `relationship` is a M:N relationship, this method will return an array of pointers. If
+   * `relationship` is a 1:M relationship, this method will return a single pointer.
+   *
+   * ```javascript
+   * model('user').fetchResource('1').then(user => {
+   *   user.retrieve('pets') === [{
+   *     id: '1',
+   *     _archived: false,
+   *     _related: false,
+   *   }]
+   *
+   *   user.retrieve('company') === {
+   *     id: '1',
+   *     _archived: false,
+   *     _related: false,
+   *   }
+   * });
+   * ```
+   *
+   * @method relationship
+   * @param {String} relationship
+   * @return {(Object[]|Object)}
+   */
+  retrieve(relationship) {
+    if (!this.relationship(relationship)) return null;
+
+    const { relation, record, records } = this.relationship(relationship);
+
+    return relation === 'hasMany'
+      ? records
+      : record;
+  }
+
+
+  /**
    * Updates this resource's attributes.
    *
    * ```javascript
