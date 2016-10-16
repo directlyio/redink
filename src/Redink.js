@@ -228,7 +228,7 @@ export default class Redink {
           field => !existingIndices.includes(field)
         );
 
-        if (verbose) {
+        if (verbose && missingIndices.length) {
           const formattedMissingIndices = missingIndices.toString().split(',').join(', ');
 
           // eslint-disable-next-line
