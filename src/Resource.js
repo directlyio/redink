@@ -70,15 +70,14 @@ export default class Resource {
 
       // hydrate relationships
       if (schema.hasRelationship(field)) {
-        const relationship = schema.relationship(field);
-        const relation = relationship.relation;
-        const recordOrRecords = relation === 'hasMany'
+        const relationship = this.relationships[field];
+        const recordOrRecords = relationship.relation === 'hasMany'
           ? 'records'
           : 'record';
 
         this.relationships[field] = {
           ...relationship,
-          [recordOrRecords]: this.relationships[field].records = record[field],
+          [recordOrRecords]: record[field],
         };
       }
     });
