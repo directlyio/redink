@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 import hasOwnProperty from './hasOwnProperty';
 
 export default (table, options) => {
@@ -19,10 +20,8 @@ export default (table, options) => {
 
   if (hasOwnProperty(options, 'without')) {
     // disallow forgoing the id
-    row = row.without({
-      ...options.without,
-      id: false,
-    });
+    delete options.without.id;
+    row = row.without(options.without);
   }
 
   if (hasOwnProperty(options, 'between')) {
