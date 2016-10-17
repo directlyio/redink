@@ -48,17 +48,6 @@ export default {
       _meta: {
         _archived: false,
       },
-    }, {
-      id: '2',
-      title: 'It Came from the Blog',
-      author: {
-        id: '1',
-        _archived: false,
-        _related: true,
-      },
-      _meta: {
-        _archived: false,
-      },
     }],
     [types.COMPANY_TABLE]: [{
       id: '1',
