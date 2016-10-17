@@ -278,9 +278,12 @@ export default class Model {
         .then(({ generated_keys: keys }) => {
           let table = r.table(type);
           createdRecordId = keys[0];
-          table = table.get(createdRecordId);
 
-          return applyOptions(table, options).run(conn);
+          table = table.get(createdRecordId);
+          table = applyOptions(table, options);
+          table = mergeRelationships(table, schema, options);
+
+          return table.run(conn);
         })
 
         // create the resource and sync its relationships
