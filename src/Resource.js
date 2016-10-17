@@ -176,17 +176,19 @@ export default class Resource {
    *
    * @async
    * @method reload
-   * @param {Options} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource>}
    */
-  reload(options = {}) {
+  reload(pre = {}, post = {}) {
     const { schema, id, conn } = this;
 
     let table = r.table(schema.type);
 
     table = table.get(id);
-    table = applyOptions(table, options);
-    table = mergeRelationships(table, schema, options);
+    table = applyOptions(table, pre);
+    table = mergeRelationships(table, schema, pre);
+    table = applyOptions(table, post);
 
     return table.run(conn)
       .then(record => new Resource(conn, schema, record));
@@ -206,10 +208,11 @@ export default class Resource {
    * @async
    * @method fetch
    * @param {String} relationship
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource|ResourceArray>}
    */
-  fetch(relationship, options = {}) {
+  fetch(relationship, pre = {}, post = {}) {
     if (!this.relationship(relationship)) {
       return Promise.resolve(null);
     }
@@ -239,8 +242,9 @@ export default class Resource {
       table = table.get(relatedRecord.id);
     }
 
-    table = applyOptions(table, options);
-    table = mergeRelationships(table, schema, options);
+    table = applyOptions(table, pre);
+    table = mergeRelationships(table, schema, pre);
+    table = applyOptions(table, post);
 
     return table.run(conn)
       .then(recordOrRecords => {
@@ -301,14 +305,16 @@ export default class Resource {
    * @async
    * @method update
    * @param {Object} fields
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource>}
    */
-  update(fields, options = {}) {
+  update(fields, pre = {}, post = {}) {
     const { schema, id, conn } = this;
     const { type } = schema;
 
     const table = r.table(type);
-    const reloadWithOptions = () => this.reload(options);
+    const reloadWithOptions = () => this.reload(pre, post);
 
     Object.keys(fields).forEach(field => {
       if (!schema.hasAttribute(field)) delete fields[field];
@@ -446,13 +452,14 @@ export default class Resource {
    *
    * @async
    * @method archive
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource>}
    */
-  archive(options = {}) {
+  archive(pre = {}, post = {}) {
     const { schema: { type }, id, conn } = this;
     const updateObject = getArchiveOriginalUpdateObject(this);
-    const reloadWithOptions = () => this.reload(options);
+    const reloadWithOptions = () => this.reload(pre, post);
 
     return r.table(type)
       .get(id)
@@ -596,14 +603,15 @@ export default class Resource {
    * @method put
    * @param {String} relationship
    * @param {(String|Resource)} data
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource>}
    */
-  put(relationship, data, options = {}) {
+  put(relationship, data, pre = {}, post = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
     const { conn, schema, id } = this;
-    const reloadWithOptions = () => this.reload(options);
+    const reloadWithOptions = () => this.reload(pre, post);
 
     let idToPut;
 
@@ -669,15 +677,16 @@ export default class Resource {
    * @async
    * @method remove
    * @param {String} relationship
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource>}
    */
-  remove(relationship, options = {}) {
+  remove(relationship, pre = {}, post = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, record, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
     const { schema, id, conn } = this;
-    const reloadWithOptions = () => this.reload(options);
+    const reloadWithOptions = () => this.reload(pre, post);
 
     if (relation !== 'hasOne') {
       throw new TypeError(
@@ -744,14 +753,15 @@ export default class Resource {
    * @method push
    * @param {String} relationship
    * @param {(String|String[]|Resource|ResourceArray)} data
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource>}
    */
-  push(relationship, data, options = {}) {
+  push(relationship, data, pre = {}, post = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field, records } = relationshipObject;
     const { schema, id, conn } = this;
-    const reloadWithOptions = () => this.reload(options);
+    const reloadWithOptions = () => this.reload(pre, post);
 
     let idsToPush;
 
@@ -822,15 +832,16 @@ export default class Resource {
    * @method splice
    * @param {String} relationship
    * @param {(String|String[]|Resource|ResourceArray)} data
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource>}
    */
-  splice(relationship, data, options = {}) {
+  splice(relationship, data, pre = {}, post = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
     const { schema, id, conn } = this;
-    const reloadWithOptions = () => this.reload(options);
+    const reloadWithOptions = () => this.reload(pre, post);
 
     let idsToSplice;
 

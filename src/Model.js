@@ -39,7 +39,7 @@ export default class Model {
   }
 
   /**
-   * Finds resources that match the criteria in `options`.
+   * Finds resources that match the criteria in `pre` and `post` options.
    *
    * ```
    * model('user').find({
@@ -62,19 +62,21 @@ export default class Model {
    *
    * @async
    * @method find
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<ResourceArray>}
    *
    * @todo Write more docs on `options`
    */
-  find(options = {}) {
+  find(pre = {}, post = {}) {
     const { conn, schema } = this;
     const { type } = schema;
 
     let table = r.table(type);
 
-    table = applyOptions(table, options);
-    table = mergeRelationships(table, schema, options);
+    table = applyOptions(table, pre);
+    table = mergeRelationships(table, schema, pre);
+    table = applyOptions(table, post);
     table = table.coerceTo('array');
 
     return table.run(conn)
@@ -86,11 +88,12 @@ export default class Model {
    *
    * @async
    * @method findOne
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource>}
    */
-  findOne(options = {}) {
-    return this.find(options).then(resources => resources.first());
+  findOne(pre = {}, post = {}) {
+    return this.find(pre, post).then(resources => resources.first());
   }
 
   /**
@@ -106,20 +109,22 @@ export default class Model {
    * @method findByIndex
    * @param {String} index - The index name.
    * @param {*} value
-   * @param {Object} options
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<ResourceArray>}
    *
    * @todo Add test.
    */
-  findByIndex(index, value, options = {}) {
+  findByIndex(index, value, pre = {}, post = {}) {
     const { conn, schema } = this;
     const { type } = schema;
 
     let table = r.table(type);
 
     table = table.getAll(value, { index });
-    table = applyOptions(table, options);
-    table = mergeRelationships(table, schema, options);
+    table = applyOptions(table, pre);
+    table = mergeRelationships(table, schema, pre);
+    table = applyOptions(table, post);
     table = table.coerceTo('array');
 
     return table.run(conn)
@@ -134,11 +139,12 @@ export default class Model {
    * @method findOneByIndex
    * @param {String} index - The index name.
    * @param {*} value
-   * @param {Object} options
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @return {Promise<Resource>}
    */
-  findOneByIndex(index, value, options = {}) {
-    return this.findByIndex(index, value, options).then(resources => resources.first());
+  findOneByIndex(index, value, pre = {}, post = {}) {
+    return this.findByIndex(index, value, pre, post).then(resources => resources.first());
   }
 
   /**
@@ -164,10 +170,11 @@ export default class Model {
    * @method findRelated
    * @param {String} id - The id of the parent resource.
    * @param {String} relationship - The relationship to the parent.
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @returns {Promise<Resource|ResourceArray>}
    */
-  findRelated(id, relationship, options = {}) {
+  findRelated(id, relationship, pre = {}, post = {}) {
     const { conn, schema, schema: { type: parentType } } = this;
 
     const {
@@ -193,8 +200,9 @@ export default class Model {
       table = table.get(id);
     }
 
-    table = applyOptions(table, options);
-    table = mergeRelationships(table, relatedSchema, options);
+    table = applyOptions(table, pre);
+    table = mergeRelationships(table, relatedSchema, pre);
+    table = applyOptions(table, post);
 
     return table.run(conn)
       .then(recordOrRecords => {
@@ -215,16 +223,18 @@ export default class Model {
    * @async
    * @method fetchResource
    * @param {String} id - The ID of the resource to retrieve.
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @returns {Promise<Resource>}
    */
-  fetchResource(id, options = {}) {
+  fetchResource(id, pre = {}, post = {}) {
     const { conn, schema } = this;
     let table = r.table(schema.type);
 
     table = table.get(id);
-    table = applyOptions(table, options);
-    table = mergeRelationships(table, schema, options);
+    table = applyOptions(table, pre);
+    table = mergeRelationships(table, schema, pre);
+    table = applyOptions(table, post);
 
     return table.run(conn)
       .then(record => new Resource(conn, schema, record));
@@ -251,10 +261,11 @@ export default class Model {
    * @async
    * @method create
    * @param {Object} record
-   * @param {Object} [options={}]
+   * @param {Object} [pre={}] - Critera before merging relationships.
+   * @param {Object} [post={}] - Critera after merging relationships.
    * @returns {Promise<Resource>}
    */
-  create(record, options = {}) {
+  create(record, pre = {}, post = {}) {
     const { conn, schema } = this;
     const { type } = schema;
 
@@ -280,8 +291,9 @@ export default class Model {
           createdRecordId = keys[0];
 
           table = table.get(createdRecordId);
-          table = applyOptions(table, options);
-          table = mergeRelationships(table, schema, options);
+          table = applyOptions(table, pre);
+          table = mergeRelationships(table, schema, pre);
+          table = applyOptions(table, post);
 
           return table.run(conn);
         })
