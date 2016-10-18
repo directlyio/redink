@@ -3,6 +3,35 @@ import applyOptions from './applyOptions';
 import hasOwnProperty from './hasOwnProperty';
 import requiresIndex from './requiresIndex';
 
+const mergeWithIndex = (table, record, field, index, options) => {
+  let row = table;
+
+  row = row.getAll(record('id'), { index });
+  row = row.coerceTo('array');
+  row = applyOptions(row, options);
+
+  return { [field]: row };
+};
+
+const mergeWithManyRecords = (table, record, field, options) => {
+  let row = table;
+
+  row = row.getAll(r.args(record(field)('id')));
+  row = row.coerceTo('array');
+  row = applyOptions(row, options);
+
+  return { [field]: row };
+};
+
+const mergeWithSingleRecord = (table, record, field, options) => {
+  let row = table;
+
+  row = row.get(record(field)('id'));
+  row = applyOptions(row, options);
+
+  return { [field]: row };
+};
+
 /**
  * Determines which relationships to sideload in the table based off the schema's relationships
  * and `options.include`.
@@ -47,26 +76,39 @@ export default (table, schema, options) => {
     ) return {};
 
     const { type, relation, inverse } = relationships[field];
-
-    let relatedTable = r.table(type);
+    const relatedTable = r.table(type);
 
     if (relation === 'hasMany') {
       if (requiresIndex(relation, inverse.relation)) {
-        relatedTable = relatedTable.getAll(record('id'), { index: inverse.field });
-      } else {
-        if (!record.hasFields(field)) return {};
-        relatedTable = relatedTable.getAll(r.args(record(field)('id')));
+        return mergeWithIndex(
+          relatedTable,
+          record,
+          field,
+          inverse.field,
+          options.include[field],
+        );
       }
 
-      relatedTable = relatedTable.coerceTo('array');
-    } else {
-      if (!record.hasFields(field)) return {};
-      relatedTable = relatedTable.get(record(field)('id'));
+      return record.hasFields(field).branch(
+        mergeWithManyRecords(
+          relatedTable,
+          record,
+          field,
+          options.include[field],
+        ),
+        {},
+      );
     }
 
-    relatedTable = applyOptions(relatedTable, options.include[field]);
-
-    return { [field]: relatedTable };
+    return record.hasFields(field).branch(
+      mergeWithSingleRecord(
+        relatedTable,
+        record,
+        field,
+        options.include[field],
+      ),
+      {},
+    );
   })));
 
   // eslint-disable-next-line
