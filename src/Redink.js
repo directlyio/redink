@@ -285,6 +285,15 @@ export default class Redink {
         .without(without);
     }
 
+    if (options.limit && options.skip && options.without) {
+      const { without, limit, skip } = options;
+
+      tableQuery = table
+        .skip(skip)
+        .limit(limit)
+        .without(without);
+    }
+
     return tableQuery
       .coerceTo('array')
       .run(conn)
