@@ -1,6 +1,6 @@
 {
   "name": "redink",
-  "version": "2.0.0-beta.15",
+  "version": "2.0.0-beta.16",
   "description": "RethinkDB model layer",
   "main": "dist/index.js",
   "scripts": {

@@ -47,17 +47,20 @@ export default (table, schema, options) => {
     ) return {};
 
     const { type, relation, inverse } = relationships[field];
+
     let relatedTable = r.table(type);
 
     if (relation === 'hasMany') {
       if (requiresIndex(relation, inverse.relation)) {
         relatedTable = relatedTable.getAll(record('id'), { index: inverse.field });
       } else {
+        if (!record.hasFields(field)) return {};
         relatedTable = relatedTable.getAll(r.args(record(field)('id')));
       }
 
       relatedTable = relatedTable.coerceTo('array');
     } else {
+      if (!record.hasFields(field)) return {};
       relatedTable = relatedTable.get(record(field)('id'));
     }
 
