@@ -1,5 +1,5 @@
 # Redink
-RethinkDB ORM
+Model layer for RethinkDB.
 
 [![CircleCI](https://circleci.com/gh/directlyio/redink.svg?style=svg)](https://circleci.com/gh/directlyio/redink)
 [![codecov](https://codecov.io/gh/directlyio/redink/branch/master/graph/badge.svg)](https://codecov.io/gh/directlyio/redink)
@@ -332,3 +332,7 @@ model('user', 'animal:pets').map({
   const newPets = user.relationship('pets'); // will not include any pets with the name 'Lassy'
 });
 ```
+
+## License
+
+[MIT](https://github.com/directlyio/redink/LICENSE)
