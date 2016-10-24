@@ -1,6 +1,8 @@
 /* eslint-disable no-unused-vars */
 import { db } from './dbSingleton';
 
+let conn;
+
 /* istanbul ignore next */
 export const create = (type, data) => db().instance().create(type, data);
 /* istanbul ignore next */
@@ -21,6 +23,10 @@ export const fetchRelated = (type, id, field, options = {}) =>
 export default () => ({
   start({ host, name, schemas, port, user, password }) {
     return db(schemas, name, host, user, password, port).start();
+  },
+
+  conn() {
+    return db().instance().conn;
   },
 
   stop() {

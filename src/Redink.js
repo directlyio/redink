@@ -285,7 +285,16 @@ export default class Redink {
         .without(without);
     }
 
-    if (options.limit && options.skip && options.without) {
+    if (options.limit && options.pluck) {
+      const { pluck, limit, skip } = options;
+
+      tableQuery = table
+        .skip(skip)
+        .limit(limit)
+        .pluck(pluck);
+    }
+
+    if (options.limit && options.without) {
       const { without, limit, skip } = options;
 
       tableQuery = table
