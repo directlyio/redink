@@ -37,4 +37,5 @@ export const disconnect = () => singleton().instance().disconnect();
 export const isResource = (resource) => resource instanceof Resource;
 export const isResourceArray = (resourceArray) => resourceArray instanceof ResourceArray;
 
+export { singleton as redink };
 export default singleton;
