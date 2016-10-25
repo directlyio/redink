@@ -197,7 +197,9 @@ export default class Model {
 
       table = table.coerceTo('array');
     } else {
-      table = table.get(id);
+      table = table.get(
+        r.table(parentType).get(id)(relationship)('id')
+      );
     }
 
     table = applyOptions(table, pre);
