@@ -97,6 +97,17 @@ export default class Model {
   }
 
   /**
+   * Returns the total count of resources.
+   * @return {Number}
+   */
+  count() {
+    const { conn, schema } = this;
+    const { type } = schema;
+
+    return r.table(type).count().run(conn);
+  }
+
+  /**
    * Finds resources using the index named `index`.
    *
    * ```
