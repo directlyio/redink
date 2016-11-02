@@ -108,6 +108,40 @@ export default class Model {
   }
 
   /**
+   * Returns the total count of resources related to this model according to `relationship`. This
+   * only applies for 'hasMany' relationships.
+   *
+   * @param {String} id
+   * @param {String} relationship
+   * @return {Number}
+   */
+  countRelated(id, relationship) {
+    const { conn, schema, schema: { type: parentType } } = this;
+
+    const {
+      type: relatedType,
+      relation,
+      inverse,
+    } = schema.relationships[relationship];
+
+    if (relation !== 'hasMany') {
+      throw new Error(
+        'Tried to perform the \'countRelated\' method on a relationship that wasn\'t a ' +
+        '\'hasMany\' relationship.'
+      );
+    }
+
+    const relatedTable = r.table(relatedType);
+    const parentTable = r.table(parentType);
+
+    if (requiresIndex(relation, inverse.relation)) {
+      return relatedTable.getAll(id, { index: inverse.field }).count().run(conn);
+    }
+
+    return parentTable.get('id')(relationship).count().run(conn);
+  }
+
+  /**
    * Finds resources using the index named `index`.
    *
    * ```
