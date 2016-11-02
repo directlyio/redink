@@ -77,6 +77,8 @@ export default (table, schema, options) => {
 
     const { type, relation, inverse } = relationships[field];
     const relatedTable = r.table(type);
+    const inverseField = inverse.field;
+    const fieldOptions = options.include[field];
 
     if (relation === 'hasMany') {
       if (requiresIndex(relation, inverse.relation)) {
@@ -84,8 +86,8 @@ export default (table, schema, options) => {
           relatedTable,
           record,
           field,
-          inverse.field,
-          options.include[field],
+          inverseField,
+          fieldOptions,
         );
       }
 
@@ -94,7 +96,7 @@ export default (table, schema, options) => {
           relatedTable,
           record,
           field,
-          options.include[field],
+          fieldOptions,
         ),
         {},
       );
@@ -105,7 +107,7 @@ export default (table, schema, options) => {
         relatedTable,
         record,
         field,
-        options.include[field],
+        fieldOptions,
       ),
       {},
     );
