@@ -1,6 +1,6 @@
 import Redink from './Redink';
-import Resource from './Resource';
-import ResourceArray from './ResourceArray';
+import Node from './Node';
+import Connection from './Connection';
 
 function singleton() {
   if (singleton.instance) {
@@ -34,8 +34,8 @@ function singleton() {
 
 export const model = (...args) => singleton().instance().model(...args);
 export const disconnect = () => singleton().instance().disconnect();
-export const isResource = (resource) => resource instanceof Resource;
-export const isResourceArray = (resourceArray) => resourceArray instanceof ResourceArray;
+export const isNode = (resource) => resource instanceof Node;
+export const isConnection = (resourceArray) => resourceArray instanceof Connection;
 
 export { singleton as redink };
 export default singleton;

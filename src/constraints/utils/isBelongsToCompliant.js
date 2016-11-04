@@ -1,4 +1,4 @@
-import { checkValidId, checkInverseHasOne } from '../../checks';
+import { checkValidId, checkInverseHasOne } from '../checks';
 
 export default (relationship, data, conn) => {
   const { inverse, type } = relationship;

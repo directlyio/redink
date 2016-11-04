@@ -1,6 +1,6 @@
 import test from 'ava';
-import Resource from '../src/Resource';
-import ResourceArray from '../src/ResourceArray';
+import Node from '../src/Node';
+import Connection from '../src/Connection';
 import applyHooks from './helpers/applyHooks';
 import { model } from '../src';
 
@@ -14,19 +14,16 @@ test('should create a user and sync it\'s relationships', async t => {
       company: '1',
     });
 
-    const employees = await model('company').fetchResource('1')
-      .then(res => res.fetch('employees'));
+    const employees = await model('company').findRelated('1', 'employees');
+    const friends = await model('user').findRelated('1', 'friends');
 
-    const friends = await model('user').fetchResource('1')
-      .then(res => res.fetch('friends'));
-
-    t.truthy(employees instanceof ResourceArray);
-    t.truthy(friends instanceof ResourceArray);
-    t.truthy(user instanceof Resource);
+    t.truthy(employees instanceof Connection);
+    t.truthy(friends instanceof Connection);
+    t.truthy(user instanceof Node);
 
     t.is(user.attribute('name'), 'CJ');
-    t.is(employees.toArray().length, 2);
-    t.is(friends.toArray().length, 2);
+    t.is(employees.totalCount, 2);
+    t.is(friends.totalCount, 2);
   } catch (err) {
     t.fail(err.message);
   }
@@ -55,12 +52,12 @@ test('should create a blog that belongs to a user', async t => {
       author: '1',
     });
 
-    const user = await model('user').fetchResource('1', {
+    const user = await model('user').fetch('1', {
       include: { blogs: true },
     });
 
-    t.truthy(blog instanceof Resource);
-    t.is(user.retrieve('blogs').length, 2);
+    t.truthy(blog instanceof Node);
+    t.is(user.retrieve('blogs').totalCount, 2);
   } catch (err) {
     t.fail(err.message);
   }

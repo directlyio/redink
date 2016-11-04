@@ -5,7 +5,7 @@ const initial = {
 };
 
 export default (resource) => (
-  Object.keys(resource.relationships).reduce((prev, curr) => {
+  Object.keys(resource._relationships).reduce((prev, curr) => {
     const { relation, inverse: { relation: inverseRelation } } = resource.relationship(curr);
 
     if (relation === 'hasOne' && inverseRelation === 'belongsTo') {

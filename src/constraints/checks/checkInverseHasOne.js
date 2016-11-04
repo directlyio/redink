@@ -1,5 +1,5 @@
 import r from 'rethinkdb';
-import { isHasOneValid } from './utils';
+import { isHasOneValid } from '../utils';
 
 export default (type, id, field, conn) => {
   if (typeof id !== 'string') {

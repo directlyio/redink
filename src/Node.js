@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 import r from 'rethinkdb';
-import ResourceArray from './ResourceArray';
+import Connection from './Connection';
+import Relationship from './Relationship';
 
 import {
   isPushCompliant,
@@ -11,6 +12,7 @@ import {
 
 import {
   applyOptions,
+  createConnection,
   getArchiveOriginalUpdateObject,
   isDataValidForSpliceAndPush,
   mergeRelationships,
@@ -29,57 +31,44 @@ import {
   archiveSpliceIdFromInverseField,
 } from './queries';
 
-export default class Resource {
+export default class Node {
   /**
-   * Instantiates a Resource.
+   * Instantiates a Node.
    *
-   * @class Resource
+   * @class Node
    * @param {Object} conn - RethinkDB connection object.
    * @param {Schema} schema
    * @param {Object} record
    */
-  constructor(conn, schema, record) {
+  constructor(conn, schema, data) {
     if (!conn) {
-      throw new TypeError('A valid RethinkDB connection is required to instantiate a Resource.');
+      throw new TypeError('A valid RethinkDB connection is required to instantiate a Node.');
     }
 
     if (!schema) {
-      throw new TypeError('A valid schema is required to instantiate a Resource.');
+      throw new TypeError('A valid schema is required to instantiate a Node.');
     }
 
-    if (!record) {
-      throw new TypeError('A valid record is required to instantiate a Resource.');
+    if (!data) {
+      // FIXME: need to return null if data doesn't exist
+      throw new TypeError('A valid data is required to instantiate a Node.');
     }
 
     this.conn = conn;
     this.schema = schema;
-    this.id = record.id;
-    this.meta = record._meta || {};
-
+    this.id = data.id;
+    this.meta = data._meta || {};
     this.attributes = {};
+    this._relationships = {};
 
-    // FIXME: ensure this clones deeply enough
-    this.relationships = { ...schema.relationships };
+    // build attributes
+    Object.keys(schema.attributes).forEach(field => {
+      this.attributes[field] = data[field];
+    });
 
-    Object.keys(record).forEach(field => {
-      // hydrate attributes
-      if (schema.hasAttribute(field)) {
-        this.attributes[field] = record[field];
-        return;
-      }
-
-      // hydrate relationships
-      if (schema.hasRelationship(field)) {
-        const relationship = this.relationships[field];
-        const recordOrRecords = relationship.relation === 'hasMany'
-          ? 'records'
-          : 'record';
-
-        this.relationships[field] = {
-          ...relationship,
-          [recordOrRecords]: record[field],
-        };
-      }
+    // build relationships
+    Object.keys(schema.relationships).forEach(field => {
+      this._relationships[field] = new Relationship(conn, schema, field, data[field]);
     });
   }
 
@@ -87,7 +76,7 @@ export default class Resource {
    * Returns an attribute.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
+   * model('user').fetch('1').then(user => {
    *   user.attribute('name') === 'Dylan'
    * });
    * ```
@@ -101,13 +90,11 @@ export default class Resource {
   }
 
   /**
-   * Returns a relationship of the resource.
+   * Returns the node's relationship.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
-   *   user.relationship('pets') === {
-   *     type: 'animal',
-   *     field: 'pets',
+   * model('user').fetch('1').then(user => {
+   *   user.relationship('pets') instanceof Relationship {
    *     schema: Schema,
    *     relation: 'hasMany',
    *     inverse: {
@@ -117,41 +104,52 @@ export default class Resource {
    *     },
    *   }
    *
-   *   user.relationship('teachers') === {
-   *     type: 'teacher',
-   *     field: 'teachers',
+   *   user.relationship('teachers') instanceof Relationship {
    *     schema: Schema,
    *     relation: 'hasMany',
-   *     records: [{
-   *       id: '1',
-   *       _archived: false,
-   *       _related: true,
-   *     }, {
-   *       id: '2',
-   *       _archived: false,
-   *       _related: true,
-   *     }],
    *     inverse: {
    *       type: 'user',
    *       relation: 'hasMany',
    *       field: 'students',
    *     },
+   *     data: {
+   *       edges: [{
+   *       	 cursor: '<opaque>',
+   *       	 node: {
+   *       	   id: '1',
+   *       	   _archived: false,
+   *       	   _related: false,
+   *       	 },
+   *       }, {
+   *         cursor: '<opaque>',
+   *         node: {
+   *           id: '2',
+   *           _archived: false,
+   *           _related: false,
+   *         },
+   *       }],
+   *       totalCount: 2,
+   *       pageInfo: {
+   *         startCursor: '<opaque>',
+   *         endCursor: '<opaque>',
+   *         hasPreviousPage: true,
+   *         hasNextPage: true,
+   *       },
+   *     },
    *   }
    *
-   *   user.relationship('company') === {
-   *     type: 'company',
-   *     field: 'company',
+   *   user.relationship('company') instanceof Relationship {
    *     schema: Schema,
    *     relation: 'hasOne',
-   *     record: {
-   *       id: '2',
-   *       _archived: false,
-   *       _related: true,
-   *     },
    *     inverse: {
    *       type: 'user',
    *       relation: 'hasMany',
    *       field: 'employees',
+   *     },
+   *     data: {
+   *       id: '2',
+   *       _archived: false,
+   *       _related: true,
    *     },
    *   }
    * });
@@ -162,13 +160,55 @@ export default class Resource {
    * @return {Object}
    */
   relationship(relationship) {
-    if (typeof relationship !== 'string') {
-      throw new TypeError(
-        'Tried calling \'relationship\' method with an argument that was not a String.'
-      );
-    }
-
     return this.relationships[relationship];
+  }
+
+  /**
+   * Get this node's relationships.
+   *
+   * ```
+   * model('user').fetch('1').then(user => {
+   *   const hasCompany = user.relationships.ofType('company');
+   *
+   *   return user.update({
+   *     isEmployed: hasCompany,
+   *   });
+   * });
+   * ```
+   *
+   * @return {Object}
+   */
+  get relationships() {
+    const relationships = this._relationships;
+
+    return {
+      ...relationships,
+
+      map(fn) {
+        return Object.keys(relationships).map(key => fn(relationships[key]));
+      },
+
+      forEach(fn) {
+        Object.keys(relationships).forEach(key => fn(relationships[key]));
+      },
+
+      ofType(type) {
+        return Object.keys(relationships).reduce((prev, curr) => {
+          if (relationships[curr].schema.type !== type) return prev;
+
+          if (prev === null) {
+            return {
+              [curr]: relationships[curr],
+            };
+          }
+
+          return {
+            ...prev,
+            [curr]: relationships[curr],
+          };
+        }, null);
+      },
+    };
   }
 
   /**
@@ -176,43 +216,40 @@ export default class Resource {
    *
    * @async
    * @method reload
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource>}
+   * @param {Object} [options={}]
+   * @return {Promise<Node>}
    */
-  reload(pre = {}, post = {}) {
+  reload(options = {}) {
     const { schema, id, conn } = this;
 
-    let table = r.table(schema.type);
+    let query = r.table(schema.type);
 
-    table = table.get(id);
-    table = applyOptions(table, pre);
-    table = mergeRelationships(table, schema, pre);
-    table = applyOptions(table, post);
+    query = query.get(id);
+    query = mergeRelationships(query, schema, options);
+    query = applyOptions(query, options);
 
-    return table.run(conn)
-      .then(record => new Resource(conn, schema, record));
+    return query.run(conn)
+      .then(data => new Node(conn, schema, data));
   }
 
   /**
-   * Fetches either the `Resource` or `ResourceArray` related to this resource by `relationship`.
+   * Fetches either the `Node` or `Connection` related to this resource by `relationship`.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
+   * model('user').fetch('1').then(user => {
    *   return user.fetch('company');
    * }).then(company => {
-   *   // Resource
+   *   // Node
    * });
    * ```
    *
    * @async
    * @method fetch
    * @param {String} relationship
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource|ResourceArray>}
+   * @param {Object} [options={}]
+   * @return {Promise<Node|Connection|null>}
    */
-  fetch(relationship, pre = {}, post = {}) {
+  fetch(relationship, options = {}) {
     if (!this.relationship(relationship)) {
       return Promise.resolve(null);
     }
@@ -220,37 +257,32 @@ export default class Resource {
     const { conn, id } = this;
 
     const {
-      type,
       schema,
       relation,
       inverse,
-      record: relatedRecord,
-      records: relatedRecords,
+      data,
     } = this.relationship(relationship);
 
-    let table = r.table(type);
+    let query = r.table(schema.type);
 
     if (relation === 'hasMany') {
+      // FIXME: remove this util with Relationship.requiresIndex
       if (requiresIndex(relation, inverse.relation)) {
-        table = table.getAll(id, { index: inverse.field });
+        query = query.getAll(id, { index: inverse.field });
       } else {
-        table = table.getAll(r.args(relatedRecords.map(record => record.id)));
+        query = query.getAll(r.args(data.map(record => record.id)));
       }
 
-      table = table.coerceTo('array');
-    } else {
-      table = table.get(relatedRecord.id);
+      return createConnection(schema, query, options).run(conn)
+        .then(newData => new Connection(conn, schema, newData));
     }
 
-    table = applyOptions(table, pre);
-    table = mergeRelationships(table, schema, pre);
-    table = applyOptions(table, post);
+    query = query.get(data.id);
+    query = applyOptions(query, options);
+    query = mergeRelationships(query, schema, options);
 
-    return table.run(conn)
-      .then(recordOrRecords => {
-        if (relation === 'hasMany') return new ResourceArray(conn, schema, recordOrRecords);
-        return new Resource(conn, schema, recordOrRecords);
-      });
+    return query.run(conn)
+      .then(newData => new Node(conn, schema, newData));
   }
 
   /**
@@ -259,7 +291,7 @@ export default class Resource {
    * `relationship` is a 1:M relationship, this method will return a single pointer.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
+   * model('user').fetch('1').then(user => {
    *   user.retrieve('pets') === [{
    *     id: '1',
    *     _archived: false,
@@ -281,11 +313,7 @@ export default class Resource {
   retrieve(relationship) {
     if (!this.relationship(relationship)) return null;
 
-    const { relation, record, records } = this.relationship(relationship);
-
-    return relation === 'hasMany'
-      ? records
-      : record;
+    return this.relationship(relationship).data;
   }
 
 
@@ -293,28 +321,27 @@ export default class Resource {
    * Updates this resource's attributes.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
+   * model('user').fetch('1').then(user => {
    *   return user.update({
    *     name: 'CJ',
    *   });
    * }).then(user => {
-   *   // Resource
+   *   // Node
    * });
    * ```
    *
    * @async
    * @method update
    * @param {Object} fields
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource>}
+   * @param {Object} [options={}]
+   * @return {Promise<Node>}
    */
-  update(fields, pre = {}, post = {}) {
+  update(fields, options = {}) {
     const { schema, id, conn } = this;
     const { type } = schema;
 
     const table = r.table(type);
-    const reloadWithOptions = () => this.reload(pre, post);
+    const reloadWithOptions = () => this.reload(options);
 
     Object.keys(fields).forEach(field => {
       if (!schema.hasAttribute(field)) delete fields[field];
@@ -443,10 +470,10 @@ export default class Resource {
    * Archives this resource and recursively archives its corresponding relationships.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
+   * model('user').fetch('1').then(user => {
    *   return user.archive();
    * }).then(user => {
-   *   // Resource
+   *   // Node
    * });
    * ```
    *
@@ -454,12 +481,12 @@ export default class Resource {
    * @method archive
    * @param {Object} [pre={}] - Critera before merging relationships.
    * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource>}
+   * @return {Promise<Node>}
    */
-  archive(pre = {}, post = {}) {
+  archive(options = {}) {
     const { schema: { type }, id, conn } = this;
     const updateObject = getArchiveOriginalUpdateObject(this);
-    const reloadWithOptions = () => this.reload(pre, post);
+    const reloadWithOptions = () => this.reload(options);
 
     return r.table(type)
       .get(id)
@@ -480,9 +507,9 @@ export default class Resource {
     const { id } = this;
 
     return Promise.all(
-      Object.keys(this.relationships).map(field => {
+      Object.keys(this._relationships).map(field => {
         const {
-          type,
+          schema,
           relation,
           inverse: {
             relation: inverseRelation,
@@ -494,6 +521,7 @@ export default class Resource {
         if (relation === 'hasMany') {
           switch (inverseRelation) {
             case 'hasMany':
+              // FIXME: the IDs should already be available on this resource, no need to fetch
               return this.fetch(field)
                 .then(resources => {
                   const idsToUpdate = resources.map(resource => resource.id);
@@ -517,10 +545,11 @@ export default class Resource {
                 );
 
             case 'hasOne':
+              // FIXME: the ID should already be available on this resource, no need to fetch
               return this.fetch(field)
                 .then(resources => {
                   const ids = resources.map(resource => resource.id);
-                  return ::this.archiveRemoveIdFromManyRecordsField(type, ids, inverseField);
+                  return ::this.archiveRemoveIdFromManyRecordsField(schema.type, ids, inverseField);
                 });
 
             default:
@@ -575,56 +604,56 @@ export default class Resource {
 
   /**
    * Assigns a resource to this resource's `hasOne` or `belongsTo` relationship identified
-   * by `relationship`. The `data` argument can either be a Resource or String id.
+   * by `relationship`. The `data` argument can either be a Node or String id.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
+   * model('user').fetch('1').then(user => {
    *   return user.put('company', '1');
    * }).then(user => {
-   *   // Resource
+   *   // Node
    * });
    *
    * model('user', 'company').map({
    *   user(model) {
-   *     return model.fetchResource('1');
+   *     return model.fetch('1');
    *   },
    *   company(model) {
-   *     return model.fetchResource('1');
+   *     return model.fetch('1');
    *   },
    * }).then(results => {
    *   const { user, company } = results;
    *   return user.put('company', company);
    * }).then(user => {
-   *   // Resource
+   *   // Node
    * });
    * ```
    *
    * @async
    * @method put
    * @param {String} relationship
-   * @param {(String|Resource)} data
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource>}
+   * @param {(String|Node)} data
+   * @param {Object} [options={}]
+   * @return {Promise<Node>}
    */
-  put(relationship, data, pre = {}, post = {}) {
+  put(relationship, data, options = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
     const { conn, schema, id } = this;
-    const reloadWithOptions = () => this.reload(pre, post);
+    const reloadWithOptions = () => this.reload(options);
 
     let idToPut;
 
     if (relation !== 'hasOne' && relation !== 'belongsTo') {
+      // FIXME: this isn't really the case for belongsTo?
       throw new TypeError(
         `Tried calling 'put' on a resource whose 'relationship' is '${relation}'. This method ` +
         'only works for resources whose \'relationship\' is \'hasOne\' or \'belongsTo\'.'
       );
     }
 
-    if (!(data instanceof Resource || typeof data === 'string')) {
+    if (!(data instanceof Node || typeof data === 'string')) {
       throw new TypeError(
-        'Tried calling \'put\' with \'data\' that was neither a Resource nor a String.'
+        'Tried calling \'put\' with \'data\' that was neither a Node nor a String.'
       );
     }
 
@@ -655,7 +684,7 @@ export default class Resource {
 
     // Ensure `id` is an id string
     if (typeof data === 'string') idToPut = data;
-    if (data instanceof Resource) idToPut = data.id;
+    if (data instanceof Node) idToPut = data.id;
 
     return isPutCompliant(relationshipObject, idToPut, conn)
       .then(putData)
@@ -667,10 +696,10 @@ export default class Resource {
    * relationship String.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
+   * model('user').fetch('1').then(user => {
    *   return user.remove('company');
    * }).then(user => {
-   *   // Resource
+   *   // Node
    * });
    * ```
    *
@@ -679,14 +708,14 @@ export default class Resource {
    * @param {String} relationship
    * @param {Object} [pre={}] - Critera before merging relationships.
    * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource>}
+   * @return {Promise<Node>}
    */
-  remove(relationship, pre = {}, post = {}) {
+  remove(relationship, options = {}) {
     const relationshipObject = this.relationship(relationship);
-    const { relation, inverse, record, field } = relationshipObject;
+    const { relation, inverse, data, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
     const { schema, id, conn } = this;
-    const reloadWithOptions = () => this.reload(pre, post);
+    const reloadWithOptions = () => this.reload(options);
 
     if (relation !== 'hasOne') {
       throw new TypeError(
@@ -704,12 +733,12 @@ export default class Resource {
 
       switch (inverseRelation) {
         case 'hasMany':
-          return removeIdFromRecordField(schema.type, id, field, record.id).run(conn);
+          return removeIdFromRecordField(schema.type, id, field, data.id).run(conn);
 
         case 'hasOne':
           return r.do(
-            removeIdFromRecordField(schema.type, id, field, record.id),
-            removeIdFromRecordField(inverse.type, record.id, inverse.field, id)
+            removeIdFromRecordField(schema.type, id, field, data.id),
+            removeIdFromRecordField(inverse.type, data.id, inverse.field, id)
           ).run(conn);
 
         default:
@@ -724,11 +753,11 @@ export default class Resource {
   }
 
   /**
-   * Pushes data to this resource's `relationship`. The `data` can either be a `Resource`,
-   * `ResourceArray`, array of Strings representing ids, or a String id.
+   * Pushes data to this resource's `relationship`. The `data` can either be a `Node`,
+   * `Connection`, array of Strings representing ids, or a String id.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
+   * model('user').fetch('1').then(user => {
    *   return user.push('pets', ['1', '2']);
    * }).then(user => {
    *   const newPets = user.relationship('pets'); // will include pets with ids '1' and '2'
@@ -736,7 +765,7 @@ export default class Resource {
    *
    * model('user', 'animal:pets').map({
    *   user(model) {
-   *     return model.fetchResource('1');
+   *     return model.fetch('1');
    *   },
    *   pets(model) {
    *     return model.find({ filter: { name: 'Lassy' } }),
@@ -752,16 +781,16 @@ export default class Resource {
    * @async
    * @method push
    * @param {String} relationship
-   * @param {(String|String[]|Resource|ResourceArray)} data
+   * @param {(String|String[]|Node|Connection)} data
    * @param {Object} [pre={}] - Critera before merging relationships.
    * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource>}
+   * @return {Promise<Node>}
    */
-  push(relationship, data, pre = {}, post = {}) {
+  push(relationship, data, options = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field, records } = relationshipObject;
     const { schema, id, conn } = this;
-    const reloadWithOptions = () => this.reload(pre, post);
+    const reloadWithOptions = () => this.reload(options);
 
     let idsToPush;
 
@@ -774,7 +803,7 @@ export default class Resource {
 
     if (!isDataValidForSpliceAndPush(data)) {
       throw new TypeError(
-        'Tried calling \'push\' with \'data\' that was neither a Resource, ResourceArray, ' +
+        'Tried calling \'push\' with \'data\' that was neither a Node, Connection, ' +
         'Array of Strings, nor a String ID.'
       );
     }
@@ -794,7 +823,7 @@ export default class Resource {
 
     // Ensure `ids` is an array of id strings
     if (Array.isArray(data)) idsToPush = data;
-    if (data instanceof ResourceArray) idsToPush = data.map(resource => resource.id);
+    if (data instanceof Connection) idsToPush = data.map(resource => resource.id);
     if (typeof data === 'string') idsToPush = [data];
 
     return isPushCompliant(relationshipObject, idsToPush, conn)
@@ -803,11 +832,11 @@ export default class Resource {
   }
 
   /**
-   * Splices data from the resource's `relationship`. The `data` can either be a `Resource`,
-   * `ResourceArray`, array of Strings representing ids, or a String id.
+   * Splices data from the resource's `relationship`. The `data` can either be a `Node`,
+   * `Connection`, array of Strings representing ids, or a String id.
    *
    * ```javascript
-   * model('user').fetchResource('1').then(user => {
+   * model('user').fetch('1').then(user => {
    *   return user.splice('pets', ['1', '2']);
    * }).then(user => {
    *   const newPets = user.relationship('pets'); // will not include pets with ids '1' and '2'
@@ -815,7 +844,7 @@ export default class Resource {
    *
    * model('user', 'animal:pets').map({
    *   user(model) {
-   *     return model.fetchResource('1');
+   *     return model.fetch('1');
    *   },
    *   pets(model) {
    *     return model.find({ filter: { name: 'Lassy' } }),
@@ -831,17 +860,17 @@ export default class Resource {
    * @async
    * @method splice
    * @param {String} relationship
-   * @param {(String|String[]|Resource|ResourceArray)} data
+   * @param {(String|String[]|Node|Connection)} data
    * @param {Object} [pre={}] - Critera before merging relationships.
    * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource>}
+   * @return {Promise<Node>}
    */
-  splice(relationship, data, pre = {}, post = {}) {
+  splice(relationship, data, options = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
     const { schema, id, conn } = this;
-    const reloadWithOptions = () => this.reload(pre, post);
+    const reloadWithOptions = () => this.reload(options);
 
     let idsToSplice;
 
@@ -854,7 +883,7 @@ export default class Resource {
 
     if (!isDataValidForSpliceAndPush(data)) {
       throw new TypeError(
-        'Tried calling \'splice\' with \'data\' that was neither a Resource, ResourceArray, ' +
+        'Tried calling \'splice\' with \'data\' that was neither a Node, Connection, ' +
         'Array of Strings, nor a String ID.'
       );
     }
@@ -868,7 +897,7 @@ export default class Resource {
 
       // Ensure `ids` is an array of id strings
       if (Array.isArray(data)) idsToSplice = data;
-      if (data instanceof ResourceArray) idsToSplice = data.map(resource => resource.id);
+      if (data instanceof Connection) idsToSplice = data.map(resource => resource.id);
       if (typeof data === 'string') idsToSplice = [data];
 
       return r.do(

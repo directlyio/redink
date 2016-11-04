@@ -1,4 +1,5 @@
 export { default as applyOptions } from './applyOptions';
+export { default as createConnection } from './createConnection';
 export { default as destructureAlias } from './destructureAlias';
 export { default as getArchiveOriginalUpdateObject } from './getArchiveOriginalUpdateObject';
 export { default as hasOwnProperty } from './hasOwnProperty';

@@ -1,26 +1,19 @@
 import r from 'rethinkdb';
 import applyOptions from './applyOptions';
+import createConnection from './createConnection';
 import hasOwnProperty from './hasOwnProperty';
 import requiresIndex from './requiresIndex';
 
-const mergeWithIndex = (table, record, field, index, options) => {
-  let row = table;
+const mergeWithIndex = (table, schema, record, field, index, options) => {
+  const edges = table.getAll(record('id'), { index });
 
-  row = row.getAll(record('id'), { index });
-  row = row.coerceTo('array');
-  row = applyOptions(row, options);
-
-  return { [field]: row };
+  return { [field]: createConnection(schema, edges, options) };
 };
 
-const mergeWithManyRecords = (table, record, field, options) => {
-  let row = table;
+const mergeWithManyRecords = (table, schema, record, field, options) => {
+  const edges = table.getAll(r.args(record(field)('id')));
 
-  row = row.getAll(r.args(record(field)('id')));
-  row = row.coerceTo('array');
-  row = applyOptions(row, options);
-
-  return { [field]: row };
+  return { [field]: createConnection(schema, edges, options) };
 };
 
 const mergeWithSingleRecord = (table, record, field, options) => {
@@ -48,7 +41,7 @@ const mergeWithSingleRecord = (table, record, field, options) => {
  *         title: true,
  *         createdOn: true,
  *       },
- *       include: { // THIS WON'T WORK (yet)
+ *       include: { // this works, but is incredibly slow
  *         author: true
  *       },
  *     },
@@ -64,7 +57,7 @@ const mergeWithSingleRecord = (table, record, field, options) => {
  * @returns {Function}
  */
 export default (table, schema, options) => {
-  if (!('include' in options)) return table;
+  if (!hasOwnProperty(options, 'include')) return table;
 
   const { relationships } = schema;
   const fields = Object.keys(relationships);
@@ -75,7 +68,7 @@ export default (table, schema, options) => {
       !Boolean(options.include[field])
     ) return {};
 
-    const { type, relation, inverse } = relationships[field];
+    const { type, relation, inverse, schema: relatedSchema } = relationships[field];
     const relatedTable = r.table(type);
     const inverseField = inverse.field;
     const fieldOptions = options.include[field];
@@ -84,6 +77,7 @@ export default (table, schema, options) => {
       if (requiresIndex(relation, inverse.relation)) {
         return mergeWithIndex(
           relatedTable,
+          relatedSchema,
           record,
           field,
           inverseField,
@@ -94,6 +88,7 @@ export default (table, schema, options) => {
       return record.hasFields(field).branch(
         mergeWithManyRecords(
           relatedTable,
+          relatedSchema,
           record,
           field,
           fieldOptions,

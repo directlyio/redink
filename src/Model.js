@@ -1,10 +1,11 @@
 import r from 'rethinkdb';
-import Resource from './Resource';
-import ResourceArray from './ResourceArray';
+import Connection from './Connection';
+import Node from './Node';
 import isCreateCompliant from './constraints/create';
 
 import {
   applyOptions,
+  createConnection,
   mergeRelationships,
   normalizeRecord,
   requiresIndex,
@@ -22,7 +23,7 @@ export default class Model {
    */
   constructor(conn, type, schema) {
     if (!conn) {
-      throw new TypeError('A valid RethinkDB connection is required to instantiate a Resource.');
+      throw new TypeError('A valid RethinkDB connection is required to instantiate a Node.');
     }
 
     if (!type) {
@@ -39,7 +40,7 @@ export default class Model {
   }
 
   /**
-   * Finds resources that match the criteria in `pre` and `post` options.
+   * Creates a connection whose edges match the criteria in `options`.
    *
    * ```
    * model('user').find({
@@ -56,97 +57,42 @@ export default class Model {
    *     company: true,
    *   },
    * }).then(users => {
-   *   // ResourceArray
+   *   // Connection
    * });
    * ```
    *
    * @async
    * @method find
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<ResourceArray>}
+   * @param {Object} [options={}]
+   * @return {Promise<Connection>}
    *
    * @todo Write more docs on `options`
    */
-  find(pre = {}, post = {}) {
+  find(options = {}) {
     const { conn, schema } = this;
-    const { type } = schema;
+    const connection = createConnection(schema, r.table(schema.type), options);
 
-    let table = r.table(type);
-
-    table = applyOptions(table, pre);
-    table = mergeRelationships(table, schema, pre);
-    table = applyOptions(table, post);
-    table = table.coerceTo('array');
-
-    return table.run(conn)
-      .then(records => new ResourceArray(conn, schema, records));
+    return connection.run(conn).then(data => new Connection(conn, schema, data));
   }
 
   /**
-   * Finds the first resource (out of potentially many) that matches the criteria in `options.`
+   * Finds the first node that matches the criteria in `options.`
    *
    * @async
    * @method findOne
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource>}
+   * @param {Object} [options={}]
+   * @return {Promise<Node>}
    */
-  findOne(pre = {}, post = {}) {
-    return this.find(pre, post).then(resources => resources.first());
+  findOne(options = {}) {
+    return this.find(options).then(connection => connection.first());
   }
 
   /**
-   * Returns the total count of resources.
-   * @return {Number}
-   */
-  count() {
-    const { conn, schema } = this;
-    const { type } = schema;
-
-    return r.table(type).count().run(conn);
-  }
-
-  /**
-   * Returns the total count of resources related to this model according to `relationship`. This
-   * only applies for 'hasMany' relationships.
-   *
-   * @param {String} id
-   * @param {String} relationship
-   * @return {Number}
-   */
-  countRelated(id, relationship) {
-    const { conn, schema, schema: { type: parentType } } = this;
-
-    const {
-      type: relatedType,
-      relation,
-      inverse,
-    } = schema.relationships[relationship];
-
-    if (relation !== 'hasMany') {
-      throw new Error(
-        'Tried to perform the \'countRelated\' method on a relationship that wasn\'t a ' +
-        '\'hasMany\' relationship.'
-      );
-    }
-
-    const relatedTable = r.table(relatedType);
-    const parentTable = r.table(parentType);
-
-    if (requiresIndex(relation, inverse.relation)) {
-      return relatedTable.getAll(id, { index: inverse.field }).count().run(conn);
-    }
-
-    return parentTable.get('id')(relationship).count().run(conn);
-  }
-
-  /**
-   * Finds resources using the index named `index`.
+   * Creates a connection using the index named `index`.
    *
    * ```
    * model('user').findByIndex('email', 'dylanslack@gmail.com').then(users => {
-   *   // ResourceArray
+   *   // Connection
    * });
    * ```
    *
@@ -154,60 +100,54 @@ export default class Model {
    * @method findByIndex
    * @param {String} index - The index name.
    * @param {*} value
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<ResourceArray>}
+   * @param {Object} [options={}]
+   * @return {Promise<Connection>}
    *
    * @todo Add test.
    */
-  findByIndex(index, value, pre = {}, post = {}) {
+  findByIndex(index, value, options = {}) {
     const { conn, schema } = this;
-    const { type } = schema;
 
-    let table = r.table(type);
+    const connection = createConnection(
+      schema,
+      r.table(schema.type).getAll(value, { index }),
+      options
+    );
 
-    table = table.getAll(value, { index });
-    table = applyOptions(table, pre);
-    table = mergeRelationships(table, schema, pre);
-    table = applyOptions(table, post);
-    table = table.coerceTo('array');
-
-    return table.run(conn)
-      .then(records => new ResourceArray(conn, schema, records));
+    return connection.run(conn).then(data => new Connection(conn, schema, data));
   }
 
   /**
-   * Finds a single resource from `index` that matches `value` and that matches the criteria in
+   * Finds a single node from `index` that matches `value` and that matches the criteria in
    * `options`.
    *
    * @async
    * @method findOneByIndex
    * @param {String} index - The index name.
    * @param {*} value
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @return {Promise<Resource>}
+   * @param {Object} [options={}] - Critera before merging relationships.
+   * @return {Promise<Node>}
    */
-  findOneByIndex(index, value, pre = {}, post = {}) {
-    return this.findByIndex(index, value, pre, post).then(resources => resources.first());
+  findOneByIndex(index, value, options = {}) {
+    return this.findByIndex(index, value, options).then(connection => connection.first());
   }
 
   /**
    * Retrieves the resource(s) related to a particular resource identified by `id` according to
-   * `relationship`. A relationship with a relation of `hasMany` returns a `ResourceArray`, and a
-   * relationship with a relation of `hasOne` or `belongsTo` returns a `Resource`.
+   * `relationship`. A relationship with a relation of `hasMany` returns a `Connection`, and a
+   * relationship with a relation of `hasOne` or `belongsTo` returns a `Node`.
    *
    * ```js
    * // pretend user `1` has a ton of pets
    * model('user').findRelated('1', 'pets', {
    *   filter: { species: 'hamster' },
    * }).then(pets => {
-   *   // ResourceArray
+   *   // Connection
    * });
    *
    * // pretend user `1` has a company
    * model('user').findRelated('1', 'company').then(company => {
-   *   // Resource
+   *   // Node
    * });
    * ```
    *
@@ -215,11 +155,10 @@ export default class Model {
    * @method findRelated
    * @param {String} id - The id of the parent resource.
    * @param {String} relationship - The relationship to the parent.
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @returns {Promise<Resource|ResourceArray>}
+   * @param {Object} [options={}]
+   * @returns {Promise<Connection|Node>}
    */
-  findRelated(id, relationship, pre = {}, post = {}) {
+  findRelated(id, relationship, options = {}) {
     const { conn, schema, schema: { type: parentType } } = this;
 
     const {
@@ -229,62 +168,53 @@ export default class Model {
       inverse,
     } = schema.relationships[relationship];
 
-    let table = r.table(relatedType);
+    let query = r.table(relatedType);
 
     if (relation === 'hasMany') {
       if (requiresIndex(relation, inverse.relation)) {
-        table = table.getAll(id, { index: inverse.field });
+        query = query.getAll(id, { index: inverse.field });
       } else {
-        table = table.getAll(
+        query = query.getAll(
           r.args(r.table(parentType).get(id)(relationship)('id'))
         );
       }
 
-      table = table.coerceTo('array');
-    } else {
-      table = table.get(
-        r.table(parentType).get(id)(relationship)('id')
-      );
+      return createConnection(relatedSchema, query, options).run(conn)
+        .then(data => new Connection(conn, relatedSchema, data));
     }
 
-    table = applyOptions(table, pre);
-    table = mergeRelationships(table, relatedSchema, pre);
-    table = applyOptions(table, post);
+    query = query.get(r.table(parentType).get(id)(relationship)('id'));
+    query = mergeRelationships(query, relatedSchema, options);
+    query = applyOptions(query, options);
 
-    return table.run(conn)
-      .then(recordOrRecords => {
-        if (relation === 'hasMany') return new ResourceArray(conn, relatedSchema, recordOrRecords);
-        return new Resource(conn, relatedSchema, recordOrRecords);
-      });
+    return query.run(conn)
+      .then(data => new Node(conn, relatedSchema, data));
   }
 
   /**
-   * Retrieves the resource corresponding to `id`.
+   * Fetches the node with `id`.
    *
    * ```js
-   * model('user').fetchResource('1').then(user => {
-   *   // Resource
+   * model('user').fetch('1').then(user => {
+   *   // Node
    * });
    * ```
    *
    * @async
-   * @method fetchResource
+   * @method fetch
    * @param {String} id - The ID of the resource to retrieve.
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @returns {Promise<Resource>}
+   * @param {Object} [options={}] - Critera before merging relationships.
+   * @returns {Promise<Node>}
    */
-  fetchResource(id, pre = {}, post = {}) {
+  fetch(id, options = {}) {
     const { conn, schema } = this;
-    let table = r.table(schema.type);
 
-    table = table.get(id);
-    table = applyOptions(table, pre);
-    table = mergeRelationships(table, schema, pre);
-    table = applyOptions(table, post);
+    let query = r.table(schema.type).get(id);
+    query = mergeRelationships(query, schema, options);
+    query = applyOptions(query, options);
 
-    return table.run(conn)
-      .then(record => new Resource(conn, schema, record));
+    return query.run(conn)
+      .then(data => new Node(conn, schema, data));
   }
 
   /**
@@ -301,18 +231,17 @@ export default class Model {
    *   pets: [ '1', '2', '3' ],
    *   company: '1',
    * }).then(user => {
-   *   // Resource
+   *   // Node
    * });
    * ```
    *
    * @async
    * @method create
    * @param {Object} record
-   * @param {Object} [pre={}] - Critera before merging relationships.
-   * @param {Object} [post={}] - Critera after merging relationships.
-   * @returns {Promise<Resource>}
+   * @param {Object} [options={}] - Critera before merging relationships.
+   * @returns {Promise<Node>}
    */
-  create(record, pre = {}, post = {}) {
+  create(record, options = {}) {
     const { conn, schema } = this;
     const { type } = schema;
 
@@ -327,34 +256,23 @@ export default class Model {
     };
 
     const createRecord = (normalizedRecord) => {
-      let createdRecordId;
-      let createdResource;
+      let createdNode;
 
       return r.table(type).insert(normalizedRecord).run(conn)
 
         // retrieve the record that was just created
-        .then(({ generated_keys: keys }) => {
-          let table = r.table(type);
-          createdRecordId = keys[0];
+        .then(({ generated_keys: keys }) => this.fetch(keys[0], options))
 
-          table = table.get(createdRecordId);
-          table = applyOptions(table, pre);
-          table = mergeRelationships(table, schema, pre);
-          table = applyOptions(table, post);
+        // create the node and sync its relationships
+        .then(node => {
+          createdNode = node;
 
-          return table.run(conn);
-        })
-
-        // create the resource and sync its relationships
-        .then(createdRecord => {
-          createdResource = new Resource(conn, schema, createdRecord);
-          const syncRelationshipsArray = syncRelationships(record, schema, createdRecordId);
-
+          const syncRelationshipsArray = syncRelationships(record, schema, node.id);
           return r.do(syncRelationshipsArray).run(conn);
         })
 
-        // return the resource
-        .then(() => createdResource);
+        // return the node
+        .then(() => createdNode);
     };
 
     // check record and it's relationships for Redink constraints

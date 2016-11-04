@@ -1,5 +1,5 @@
-import Resource from '../Resource';
-import ResourceArray from '../ResourceArray';
+import Node from '../Node';
+import Connection from '../Connection';
 
 const isArrayOfStrings = (array) => {
   if (!Array.isArray(array)) return false;
@@ -7,8 +7,8 @@ const isArrayOfStrings = (array) => {
 };
 
 export default (data) => (
-  data instanceof Resource ||
-  data instanceof ResourceArray ||
+  data instanceof Node ||
+  data instanceof Connection ||
   isArrayOfStrings(data) ||
   typeof data === 'string'
 );

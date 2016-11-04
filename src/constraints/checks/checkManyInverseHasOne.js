@@ -1,5 +1,5 @@
 import r from 'rethinkdb';
-import { isHasOneValid } from './utils';
+import { isHasOneValid } from '../utils';
 
 export default (type, ids, field, conn) => {
   if (!Array.isArray(ids)) {

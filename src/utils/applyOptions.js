@@ -1,10 +1,10 @@
 /* eslint-disable no-param-reassign */
 import hasOwnProperty from './hasOwnProperty';
 
-export default (table, options) => {
-  if (typeof options !== 'object') return table;
+export default (query, options) => {
+  if (typeof options !== 'object') return query;
 
-  let row = table;
+  let row = query;
 
   if (hasOwnProperty(options, 'filter')) {
     row = row.filter(options.filter);
@@ -13,7 +13,7 @@ export default (table, options) => {
   if (hasOwnProperty(options, 'pluck')) {
     // always pluck the id
     row = row.pluck({
-      ...options.include,
+      ...options.pluck,
       id: true,
     });
   }
