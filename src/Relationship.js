@@ -9,10 +9,10 @@ const isHasManyRelationshipHydrated = (data) => (
 );
 
 export default class Relationship {
-  constructor(conn, parentSchema, field, data = null) {
-    const { schema, relation, inverse } = parentSchema.relationships[field];
+  constructor(conn, parentType, field, data = null) {
+    const { type, relation, inverse } = parentType.relationships[field];
 
-    this.schema = schema;
+    this.type = type;
     this.field = field;
     this.relation = relation;
     this.inverse = inverse;
@@ -22,7 +22,7 @@ export default class Relationship {
 
     if (relation === 'hasMany') {
       if (isHasManyRelationshipHydrated(data)) {
-        this.data = new Connection(conn, schema, data);
+        this.data = new Connection(conn, type, data);
         this.isHydrated = true;
       } else {
         this.data = data;
@@ -30,7 +30,7 @@ export default class Relationship {
       }
     } else {
       if (data) {
-        this.data = new Node(conn, schema, data);
+        this.data = new Node(conn, type, data);
       } else {
         this.data = null;
       }

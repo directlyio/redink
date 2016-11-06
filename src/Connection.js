@@ -1,25 +1,25 @@
 import Node from './Node';
 
 export default class Connection {
-  constructor(conn, schema, data) {
+  constructor(conn, type, data) {
     if (!conn) {
       throw new TypeError('Argument "conn" is required to instantiate a Connection.');
     }
 
-    if (!schema) {
-      throw new TypeError('Argument "schema" is required to instantiate a Connection.');
+    if (!type) {
+      throw new TypeError('Argument "type" is required to instantiate a Connection.');
     }
 
     if (!data) {
       throw new TypeError('Argument "data" is required to instantiate a Connection.');
     }
 
-    this.schema = schema;
+    this.type = type;
     this.pageInfo = data.pageInfo;
     this.totalCount = data.totalCount;
 
     this.edges = data.edges.map(({ node, cursor }) => ({
-      node: new Node(conn, schema, node),
+      node: new Node(conn, type, node),
       cursor,
     }));
   }

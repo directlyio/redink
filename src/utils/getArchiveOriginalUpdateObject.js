@@ -1,26 +1,24 @@
-const initial = {
+const initialValue = {
   _meta: {
     _archived: true,
   },
 };
 
-export default (resource) => (
-  Object.keys(resource._relationships).reduce((prev, curr) => {
-    const { relation, inverse: { relation: inverseRelation } } = resource.relationship(curr);
+export default (node) => node.relationships.reduce((prev, relationship) => {
+  const { relation, field, inverse: { relation: inverseRelation } } = relationship;
 
-    if (relation === 'hasOne' && inverseRelation === 'belongsTo') {
-      return {
-        ...prev,
-        relationships: {
-          ...prev.relationships,
-          [curr]: {
-            ...prev.relationships[curr],
-            _archived: true,
-          },
+  if (relation === 'hasOne' && inverseRelation === 'belongsTo') {
+    return {
+      ...prev,
+      relationships: {
+        ...prev.relationships,
+        [field]: {
+          ...prev.relationships[field],
+          _archived: true,
         },
-      };
-    }
+      },
+    };
+  }
 
-    return prev;
-  }, initial)
-);
+  return prev;
+}, initialValue);

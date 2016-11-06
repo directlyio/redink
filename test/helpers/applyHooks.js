@@ -1,6 +1,6 @@
 import { init, cleanup } from 'ava-rethinkdb';
 import redink from '../../src';
-import { schemas, initData } from '../fixtures';
+import { schema, initData } from '../fixtures';
 
 const CLEANUP_DELAY = 500;
 const stop = () => redink().disconnect();
@@ -13,7 +13,7 @@ export default (test, data = initData) => {
   test.before('should start the seeded singleton', t => (
     redink()
       .connect({
-        schemas,
+        schema,
         port,
         db: 'test',
         host: 'localhost',

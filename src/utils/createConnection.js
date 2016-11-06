@@ -24,8 +24,8 @@ const decodedCursorToDatum = (decodedCursor) => {
   return r.tableList().contains(table).branch(r.table(table).get(pkey), null);
 };
 
-const nodeToCursor = (type, node) => r.add(
-  type,
+const nodeToCursor = (name, node) => r.add(
+  name,
   ':',
   node.typeOf().eq('OBJECT').branch(node('id'), null),
 ).do(rbtoa);
@@ -41,12 +41,12 @@ const ensureNonNegative = (num, argName) => {
  * @see [`graphql-relay-js` #103]{@link https://github.com/graphql/graphql-relay-js/issues/103}
  * @see [Original Code]{@link https://gist.github.com/migueloller/8d201d812df721018bc0f68fc5f6283b}
  */
-export default (schema, sequence, options = {}) => {
-  const { type } = schema;
+export default (type, sequence, options = {}) => {
+  const { name } = type;
   let after, before, last, first, afterIndex, beforeIndex; // eslint-disable-line
   let edges = sequence;
 
-  edges = mergeRelationships(edges, schema, options);
+  edges = mergeRelationships(edges, type, options);
 
   if (hasOwnProperty(options, 'filter')) {
     edges = edges.filter(options.filter);
@@ -153,7 +153,7 @@ export default (schema, sequence, options = {}) => {
 
   edges = edges.map((node) => ({
     node,
-    cursor: nodeToCursor(type, node),
+    cursor: nodeToCursor(name, node),
   })).coerceTo('array');
 
   return r({

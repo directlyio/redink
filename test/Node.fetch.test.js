@@ -15,15 +15,15 @@ test('should fetch a user\'s relationships', async t => {
     const employees = await company.fetch('employees');
 
     t.truthy(user instanceof Node);
-    t.is(user.schema.type, 'user');
+    t.is(user.type.name, 'user');
     t.truthy(blogs instanceof Connection);
-    t.is(blogs.schema.type, 'blog');
+    t.is(blogs.type.name, 'blog');
     t.truthy(friends instanceof Connection);
-    t.is(friends.schema.type, 'user');
+    t.is(friends.type.name, 'user');
     t.truthy(company instanceof Node);
-    t.is(company.schema.type, 'company');
+    t.is(company.type.name, 'company');
     t.truthy(employees instanceof Connection);
-    t.is(employees.schema.type, 'user');
+    t.is(employees.type.name, 'user');
     t.truthy(employees.first() instanceof Node);
   } catch (err) {
     t.fail(err.message);

@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 import hasOwnProperty from './hasOwnProperty';
 
-export default (record, schema) => {
+export default (record, type) => {
   const normalizedRecord = {
     ...record,
     _meta: {
@@ -17,8 +17,8 @@ export default (record, schema) => {
 
   const normalizeMany = (ids) => ids.map(id => normalize(id));
 
-  Object.keys(schema.relationships).forEach(relationship => {
-    const relationshipObject = schema.relationships[relationship];
+  Object.keys(type.relationships).forEach(relationship => {
+    const relationshipObject = type.relationships[relationship];
     const { field, relation, inverse } = relationshipObject;
     const data = record[field];
 

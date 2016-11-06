@@ -36,17 +36,17 @@ export default class Node {
    * Instantiates a Node.
    *
    * @class Node
-   * @param {Object} conn - RethinkDB connection object.
-   * @param {Schema} schema
-   * @param {Object} record
+   * @param {Object} conn
+   * @param {Type} type
+   * @param {Object} data
    */
-  constructor(conn, schema, data) {
+  constructor(conn, type, data) {
     if (!conn) {
       throw new TypeError('A valid RethinkDB connection is required to instantiate a Node.');
     }
 
-    if (!schema) {
-      throw new TypeError('A valid schema is required to instantiate a Node.');
+    if (!type) {
+      throw new TypeError('A valid type is required to instantiate a Node.');
     }
 
     if (!data) {
@@ -55,20 +55,20 @@ export default class Node {
     }
 
     this.conn = conn;
-    this.schema = schema;
+    this.type = type;
     this.id = data.id;
     this.meta = data._meta || {};
     this.attributes = {};
     this._relationships = {};
 
     // build attributes
-    Object.keys(schema.attributes).forEach(field => {
+    type.attributes.forEach(({ field }) => {
       this.attributes[field] = data[field];
     });
 
     // build relationships
-    Object.keys(schema.relationships).forEach(field => {
-      this._relationships[field] = new Relationship(conn, schema, field, data[field]);
+    type.relationships.forEach(({ field }) => {
+      this._relationships[field] = new Relationship(conn, type, field, data[field]);
     });
   }
 
@@ -95,20 +95,20 @@ export default class Node {
    * ```javascript
    * model('user').fetch('1').then(user => {
    *   user.relationship('pets') instanceof Relationship {
-   *     schema: Schema,
+   *     type: Type,
    *     relation: 'hasMany',
    *     inverse: {
-   *       type: 'user',
+   *       name: 'user',
    *       relation: 'belongsTo',
    *       field: 'owner',
    *     },
    *   }
    *
    *   user.relationship('teachers') instanceof Relationship {
-   *     schema: Schema,
+   *     type: Type,
    *     relation: 'hasMany',
    *     inverse: {
-   *       type: 'user',
+   *       name: 'user',
    *       relation: 'hasMany',
    *       field: 'students',
    *     },
@@ -139,10 +139,10 @@ export default class Node {
    *   }
    *
    *   user.relationship('company') instanceof Relationship {
-   *     schema: Schema,
+   *     type: Type,
    *     relation: 'hasOne',
    *     inverse: {
-   *       type: 'user',
+   *       name: 'user',
    *       relation: 'hasMany',
    *       field: 'employees',
    *     },
@@ -192,9 +192,14 @@ export default class Node {
         Object.keys(relationships).forEach(key => fn(relationships[key]));
       },
 
-      ofType(type) {
+      reduce(fn, initialValue) {
+        return Object.keys(relationships).reduce((init, key) =>
+          fn(init, relationships[key]), initialValue);
+      },
+
+      ofType(name) {
         return Object.keys(relationships).reduce((prev, curr) => {
-          if (relationships[curr].schema.type !== type) return prev;
+          if (relationships[curr].type.name !== name) return prev;
 
           if (prev === null) {
             return {
@@ -220,16 +225,16 @@ export default class Node {
    * @return {Promise<Node>}
    */
   reload(options = {}) {
-    const { schema, id, conn } = this;
+    const { type, id, conn } = this;
 
-    let query = r.table(schema.type);
+    let query = r.table(type.name);
 
     query = query.get(id);
-    query = mergeRelationships(query, schema, options);
+    query = mergeRelationships(query, type, options);
     query = applyOptions(query, options);
 
     return query.run(conn)
-      .then(data => new Node(conn, schema, data));
+      .then(data => new Node(conn, type, data));
   }
 
   /**
@@ -257,13 +262,13 @@ export default class Node {
     const { conn, id } = this;
 
     const {
-      schema,
+      type,
       relation,
       inverse,
       data,
     } = this.relationship(relationship);
 
-    let query = r.table(schema.type);
+    let query = r.table(type.name);
 
     if (relation === 'hasMany') {
       // FIXME: remove this util with Relationship.requiresIndex
@@ -273,16 +278,16 @@ export default class Node {
         query = query.getAll(r.args(data.map(record => record.id)));
       }
 
-      return createConnection(schema, query, options).run(conn)
-        .then(newData => new Connection(conn, schema, newData));
+      return createConnection(type, query, options).run(conn)
+        .then(newData => new Connection(conn, type, newData));
     }
 
     query = query.get(data.id);
     query = applyOptions(query, options);
-    query = mergeRelationships(query, schema, options);
+    query = mergeRelationships(query, type, options);
 
     return query.run(conn)
-      .then(newData => new Node(conn, schema, newData));
+      .then(newData => new Node(conn, type, newData));
   }
 
   /**
@@ -337,14 +342,14 @@ export default class Node {
    * @return {Promise<Node>}
    */
   update(fields, options = {}) {
-    const { schema, id, conn } = this;
-    const { type } = schema;
+    const { type, id, conn } = this;
+    const { name } = type;
 
-    const table = r.table(type);
+    const table = r.table(name);
     const reloadWithOptions = () => this.reload(options);
 
     Object.keys(fields).forEach(field => {
-      if (!schema.hasAttribute(field)) delete fields[field];
+      if (!type.hasAttribute(field)) delete fields[field];
     });
 
     return table
@@ -378,9 +383,9 @@ export default class Node {
       );
     }
 
-    const { schema: { type }, id, conn } = this;
+    const { type: { name }, id, conn } = this;
 
-    return archiveRemoveIdFromRecordField(type, id, field, idToRemove).run(conn);
+    return archiveRemoveIdFromRecordField(name, id, field, idToRemove).run(conn);
   }
 
   /**
@@ -394,8 +399,8 @@ export default class Node {
    * @param {String} field
    * @return {Object}
    */
-  archiveRemoveIdFromManyRecordsField(type, ids, field) {
-    if (typeof type !== 'string') {
+  archiveRemoveIdFromManyRecordsField(name, ids, field) {
+    if (typeof name !== 'string') {
       throw new TypeError(
         'Tried calling \'archiveRemoveIdFromManyRecordsField\' with ' +
         '\'type\' that was not a String.'
@@ -418,7 +423,7 @@ export default class Node {
 
     const { id: idToRemove, conn } = this;
 
-    return archiveRemoveIdFromManyRecordsField(type, ids, field, idToRemove).run(conn);
+    return archiveRemoveIdFromManyRecordsField(name, ids, field, idToRemove).run(conn);
   }
 
   /**
@@ -427,17 +432,17 @@ export default class Node {
    *
    * @async
    * @private
-   * @param {String} inverseType
+   * @param {String} inverseName
    * @param {String} inverseField
    * @param {String[]} idsToUpdate
    * @param {String} idToSplice
    * @return {Object}
    */
-  archiveSpliceIdFromInverseField(inverseType, inverseField, idsToUpdate, idToSplice) {
-    if (typeof inverseType !== 'string') {
+  archiveSpliceIdFromInverseField(inverseName, inverseField, idsToUpdate, idToSplice) {
+    if (typeof inverseName !== 'string') {
       throw new TypeError(
         'Tried calling \'archiveSpliceIdFromInverseField\' with ' +
-        '\'inverseType\' that was not a String.'
+        '\'inverseName\' that was not a String.'
       );
     }
 
@@ -462,7 +467,7 @@ export default class Node {
       );
     }
 
-    return archiveSpliceIdFromInverseField(inverseType, inverseField, idsToUpdate, idToSplice)
+    return archiveSpliceIdFromInverseField(inverseName, inverseField, idsToUpdate, idToSplice)
       .run(this.conn);
   }
 
@@ -484,11 +489,11 @@ export default class Node {
    * @return {Promise<Node>}
    */
   archive(options = {}) {
-    const { schema: { type }, id, conn } = this;
+    const { type: { name }, id, conn } = this;
     const updateObject = getArchiveOriginalUpdateObject(this);
     const reloadWithOptions = () => this.reload(options);
 
-    return r.table(type)
+    return r.table(name)
       .get(id)
       .update(updateObject)
       .run(conn)
@@ -509,12 +514,12 @@ export default class Node {
     return Promise.all(
       Object.keys(this._relationships).map(field => {
         const {
-          schema,
+          type,
           relation,
           inverse: {
             relation: inverseRelation,
             field: inverseField,
-            type: inverseType,
+            name: inverseName,
           },
         } = this.relationship(field);
 
@@ -526,7 +531,7 @@ export default class Node {
                 .then(resources => {
                   const idsToUpdate = resources.map(resource => resource.id);
                   return ::this.archiveSpliceIdFromInverseField(
-                    inverseType,
+                    inverseName,
                     inverseField,
                     idsToUpdate,
                     id
@@ -549,7 +554,7 @@ export default class Node {
               return this.fetch(field)
                 .then(resources => {
                   const ids = resources.map(resource => resource.id);
-                  return ::this.archiveRemoveIdFromManyRecordsField(schema.type, ids, inverseField);
+                  return ::this.archiveRemoveIdFromManyRecordsField(type.name, ids, inverseField);
                 });
 
             default:
@@ -638,7 +643,7 @@ export default class Node {
   put(relationship, data, options = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
-    const { conn, schema, id } = this;
+    const { conn, type, id } = this;
     const reloadWithOptions = () => this.reload(options);
 
     let idToPut;
@@ -666,12 +671,12 @@ export default class Node {
 
       switch (inverse.relation) {
         case 'hasMany':
-          return putIdToRecordField(schema.type, id, field, idToPut).run(conn);
+          return putIdToRecordField(type.name, id, field, idToPut).run(conn);
 
         case 'hasOne':
           return r.do(
-            putIdToRecordField(schema.type, id, field, idToPut),
-            putIdToRecordField(inverse.type, idToPut, inverse.field, id)
+            putIdToRecordField(type.name, id, field, idToPut),
+            putIdToRecordField(inverse.name, idToPut, inverse.field, id)
           ).run(conn);
 
         default:
@@ -714,7 +719,7 @@ export default class Node {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, data, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
-    const { schema, id, conn } = this;
+    const { type, id, conn } = this;
     const reloadWithOptions = () => this.reload(options);
 
     if (relation !== 'hasOne') {
@@ -733,12 +738,12 @@ export default class Node {
 
       switch (inverseRelation) {
         case 'hasMany':
-          return removeIdFromRecordField(schema.type, id, field, data.id).run(conn);
+          return removeIdFromRecordField(type.name, id, field, data.id).run(conn);
 
         case 'hasOne':
           return r.do(
-            removeIdFromRecordField(schema.type, id, field, data.id),
-            removeIdFromRecordField(inverse.type, data.id, inverse.field, id)
+            removeIdFromRecordField(type.name, id, field, data.id),
+            removeIdFromRecordField(inverse.name, data.id, inverse.field, id)
           ).run(conn);
 
         default:
@@ -789,7 +794,7 @@ export default class Node {
   push(relationship, data, options = {}) {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field, records } = relationshipObject;
-    const { schema, id, conn } = this;
+    const { type, id, conn } = this;
     const reloadWithOptions = () => this.reload(options);
 
     let idsToPush;
@@ -816,8 +821,8 @@ export default class Node {
       }
 
       return r.do(
-        pushIdToOriginalField(schema.type, id, field, records, idsToPush),
-        pushIdToInverseField(inverse.type, inverse.field, records, idsToPush, id)
+        pushIdToOriginalField(type.name, id, field, records, idsToPush),
+        pushIdToInverseField(inverse.name, inverse.field, records, idsToPush, id)
       ).run(conn);
     };
 
@@ -869,7 +874,7 @@ export default class Node {
     const relationshipObject = this.relationship(relationship);
     const { relation, inverse, field } = relationshipObject;
     const { relation: inverseRelation } = inverse;
-    const { schema, id, conn } = this;
+    const { type, id, conn } = this;
     const reloadWithOptions = () => this.reload(options);
 
     let idsToSplice;
@@ -901,8 +906,8 @@ export default class Node {
       if (typeof data === 'string') idsToSplice = [data];
 
       return r.do(
-        spliceIdFromOriginalField(schema.type, field, id, idsToSplice),
-        spliceIdFromInverseField(inverse.type, inverse.field, idsToSplice, id)
+        spliceIdFromOriginalField(type.name, field, id, idsToSplice),
+        spliceIdFromInverseField(inverse.name, inverse.field, idsToSplice, id)
       ).run(conn);
     };
 

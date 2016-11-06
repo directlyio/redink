@@ -4,16 +4,16 @@ import createConnection from './createConnection';
 import hasOwnProperty from './hasOwnProperty';
 import requiresIndex from './requiresIndex';
 
-const mergeWithIndex = (table, schema, record, field, index, options) => {
+const mergeWithIndex = (table, type, record, field, index, options) => {
   const edges = table.getAll(record('id'), { index });
 
-  return { [field]: createConnection(schema, edges, options) };
+  return { [field]: createConnection(type, edges, options) };
 };
 
-const mergeWithManyRecords = (table, schema, record, field, options) => {
+const mergeWithManyRecords = (table, type, record, field, options) => {
   const edges = table.getAll(r.args(record(field)('id')));
 
-  return { [field]: createConnection(schema, edges, options) };
+  return { [field]: createConnection(type, edges, options) };
 };
 
 const mergeWithSingleRecord = (table, record, field, options) => {
@@ -26,7 +26,7 @@ const mergeWithSingleRecord = (table, record, field, options) => {
 };
 
 /**
- * Determines which relationships to sideload in the table based off the schema's relationships
+ * Determines which relationships to sideload in the table based off the type's relationships
  * and `options.include`.
  *
  * ```
@@ -52,14 +52,14 @@ const mergeWithSingleRecord = (table, record, field, options) => {
  * Missing relationship keys in `options` are interpreted as `false`.
  *
  * @param {Object} table
- * @param {Object} schema
+ * @param {Type} type
  * @param {Object} options
  * @returns {Function}
  */
-export default (table, schema, options) => {
+export default (table, type, options) => {
   if (!hasOwnProperty(options, 'include')) return table;
 
-  const { relationships } = schema;
+  const { relationships } = type;
   const fields = Object.keys(relationships);
 
   const fieldsToMerge = (record) => r({}).merge(r.args(fields.map(field => {
@@ -68,8 +68,8 @@ export default (table, schema, options) => {
       !Boolean(options.include[field])
     ) return {};
 
-    const { type, relation, inverse, schema: relatedSchema } = relationships[field];
-    const relatedTable = r.table(type);
+    const { name, relation, inverse, type: relatedType } = relationships[field];
+    const relatedTable = r.table(name);
     const inverseField = inverse.field;
     const fieldOptions = options.include[field];
 
@@ -77,7 +77,7 @@ export default (table, schema, options) => {
       if (requiresIndex(relation, inverse.relation)) {
         return mergeWithIndex(
           relatedTable,
-          relatedSchema,
+          relatedType,
           record,
           field,
           inverseField,
@@ -88,7 +88,7 @@ export default (table, schema, options) => {
       return record.hasFields(field).branch(
         mergeWithManyRecords(
           relatedTable,
-          relatedSchema,
+          relatedType,
           record,
           field,
           fieldOptions,

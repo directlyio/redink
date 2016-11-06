@@ -17,26 +17,20 @@ export default class Model {
    * Instantiates a Model.
    *
    * @class Model
-   * @param {Object} conn - RethinkDB connection object.
+   * @param {Object} conn
    * @param {String} type
-   * @param {Schema} schema
    */
-  constructor(conn, type, schema) {
+  constructor(conn, type) {
     if (!conn) {
-      throw new TypeError('A valid RethinkDB connection is required to instantiate a Node.');
+      throw new TypeError('Argument "conn" is required to instantiate a Model.');
     }
 
     if (!type) {
-      throw new TypeError('A valid type is required to instantiate a model.');
-    }
-
-    if (!schema) {
-      throw new TypeError('A valid schema is required to instantiate a model.');
+      throw new TypeError('Argument "type" is required to instantiate a Model.');
     }
 
     this.conn = conn;
     this.type = type;
-    this.schema = schema;
   }
 
   /**
@@ -69,10 +63,10 @@ export default class Model {
    * @todo Write more docs on `options`
    */
   find(options = {}) {
-    const { conn, schema } = this;
-    const connection = createConnection(schema, r.table(schema.type), options);
+    const { conn, type } = this;
+    const connection = createConnection(type, r.table(type.name), options);
 
-    return connection.run(conn).then(data => new Connection(conn, schema, data));
+    return connection.run(conn).then(data => new Connection(conn, type, data));
   }
 
   /**
@@ -106,15 +100,15 @@ export default class Model {
    * @todo Add test.
    */
   findByIndex(index, value, options = {}) {
-    const { conn, schema } = this;
+    const { conn, type } = this;
 
     const connection = createConnection(
-      schema,
-      r.table(schema.type).getAll(value, { index }),
+      type,
+      r.table(type.name).getAll(value, { index }),
       options
     );
 
-    return connection.run(conn).then(data => new Connection(conn, schema, data));
+    return connection.run(conn).then(data => new Connection(conn, type, data));
   }
 
   /**
@@ -159,23 +153,23 @@ export default class Model {
    * @returns {Promise<Connection|Node>}
    */
   findRelated(id, relationship, options = {}) {
-    const { conn, schema, schema: { type: parentType } } = this;
+    const { conn, type, type: { name: parentName } } = this;
 
     const {
-      type: relatedType,
-      schema: relatedSchema,
+      name: relatedName,
+      type: relatedSchema,
       relation,
       inverse,
-    } = schema.relationships[relationship];
+    } = type.relationships[relationship];
 
-    let query = r.table(relatedType);
+    let query = r.table(relatedName);
 
     if (relation === 'hasMany') {
       if (requiresIndex(relation, inverse.relation)) {
         query = query.getAll(id, { index: inverse.field });
       } else {
         query = query.getAll(
-          r.args(r.table(parentType).get(id)(relationship)('id'))
+          r.args(r.table(parentName).get(id)(relationship)('id'))
         );
       }
 
@@ -183,7 +177,7 @@ export default class Model {
         .then(data => new Connection(conn, relatedSchema, data));
     }
 
-    query = query.get(r.table(parentType).get(id)(relationship)('id'));
+    query = query.get(r.table(parentName).get(id)(relationship)('id'));
     query = mergeRelationships(query, relatedSchema, options);
     query = applyOptions(query, options);
 
@@ -207,14 +201,14 @@ export default class Model {
    * @returns {Promise<Node>}
    */
   fetch(id, options = {}) {
-    const { conn, schema } = this;
+    const { conn, type } = this;
 
-    let query = r.table(schema.type).get(id);
-    query = mergeRelationships(query, schema, options);
+    let query = r.table(type.name).get(id);
+    query = mergeRelationships(query, type, options);
     query = applyOptions(query, options);
 
     return query.run(conn)
-      .then(data => new Node(conn, schema, data));
+      .then(data => new Node(conn, type, data));
   }
 
   /**
@@ -242,8 +236,8 @@ export default class Model {
    * @returns {Promise<Node>}
    */
   create(record, options = {}) {
-    const { conn, schema } = this;
-    const { type } = schema;
+    const { conn, type } = this;
+    const { name } = type;
 
     const checkComplianceAndNormalizeRecord = (compliant) => {
       if (!compliant) {
@@ -252,13 +246,13 @@ export default class Model {
         );
       }
 
-      return normalizeRecord(record, schema);
+      return normalizeRecord(record, type);
     };
 
     const createRecord = (normalizedRecord) => {
       let createdNode;
 
-      return r.table(type).insert(normalizedRecord).run(conn)
+      return r.table(name).insert(normalizedRecord).run(conn)
 
         // retrieve the record that was just created
         .then(({ generated_keys: keys }) => this.fetch(keys[0], options))
@@ -267,7 +261,7 @@ export default class Model {
         .then(node => {
           createdNode = node;
 
-          const syncRelationshipsArray = syncRelationships(record, schema, node.id);
+          const syncRelationshipsArray = syncRelationships(record, type, node.id);
           return r.do(syncRelationshipsArray).run(conn);
         })
 
@@ -275,8 +269,8 @@ export default class Model {
         .then(() => createdNode);
     };
 
-    // check record and it's relationships for Redink constraints
-    return isCreateCompliant(record, schema, conn)
+    // check record and its relationships for Redink constraints
+    return isCreateCompliant(record, type, conn)
       .then(checkComplianceAndNormalizeRecord)
       .then(createRecord);
   }

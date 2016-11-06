@@ -1,7 +1,7 @@
 import r from 'rethinkdb';
 
-export default (type, id, field, idToRemove) => (
-  r.table(type).get(id).update(row => ({
+export default (name, id, field, idToRemove) => (
+  r.table(name).get(id).update(row => ({
     [field]: {
       id: idToRemove,
       _archived: true,

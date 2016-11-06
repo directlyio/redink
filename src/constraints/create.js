@@ -6,7 +6,7 @@ import {
   isBelongsToCompliant,
 } from './utils';
 
-export default (record, schema, conn) => {
+export default (record, type, conn) => {
   const isTrue = check => (check === true);
   const checkPass = response => response.every(isTrue);
 
@@ -26,8 +26,8 @@ export default (record, schema, conn) => {
     }
   };
 
-  return Promise.all(Object.keys(schema.relationships).reduce((prev, next) => {
-    const relationship = schema.relationships[next];
+  return Promise.all(Object.keys(type.relationships).reduce((prev, next) => {
+    const relationship = type.relationships[next];
     const { relation, inverse, field } = relationship;
     const data = record[field];
 

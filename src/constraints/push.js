@@ -5,7 +5,7 @@ import {
 
 export default (relationshipObject, ids, conn) => {
   const {
-    schema,
+    type,
     inverse: {
       relation: inverseRelation,
       field: inverseField,
@@ -14,10 +14,10 @@ export default (relationshipObject, ids, conn) => {
 
   switch (inverseRelation) {
     case 'hasMany':
-      return checkValidIds(schema.type, ids, conn);
+      return checkValidIds(type.name, ids, conn);
 
     case 'hasOne':
-      return checkManyInverseHasOne(schema.type, ids, inverseField, conn);
+      return checkManyInverseHasOne(type.name, ids, inverseField, conn);
 
     case 'belongsTo':
     default:

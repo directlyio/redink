@@ -3,7 +3,7 @@ import Promise from 'bluebird';
 import chalk from 'chalk';
 import Model from './Model';
 import ModelArray from './ModelArray';
-import { destructureAlias, hydrateInverse, requiresIndex } from './utils';
+import { destructureAlias, requiresIndex } from './utils';
 
 const DEFAULT_RETHINKDB_PORT = 28015;
 
@@ -15,7 +15,7 @@ export default class Redink {
    * @param {String} [options.host='']
    * @param {String} [options.user='']
    * @param {String} [options.password='']
-   * @param {Object} [options.schemas={}]
+   * @param {Object} [options.schema={}]
    * @param {Boolean} [options.verbse=false]
    * @param {Number} [options.port=28015]
    */
@@ -24,7 +24,7 @@ export default class Redink {
     host = '',
     user = '',
     password = '',
-    schemas = {},
+    schema = {},
     verbose = false,
     port = DEFAULT_RETHINKDB_PORT,
   }) {
@@ -32,7 +32,7 @@ export default class Redink {
     this.host = host;
     this.user = user;
     this.password = password;
-    this.schemas = schemas;
+    this.schema = schema;
     this.verbose = verbose;
     this.port = port;
 
@@ -41,7 +41,7 @@ export default class Redink {
   }
 
   /**
-   * Connects to the RethinkDB database, registers the schemas, and configures indices.
+   * Connects to the RethinkDB database, registers the schema, and configures indices.
    *
    * @async
    * @method connect
@@ -59,7 +59,7 @@ export default class Redink {
 
     return r.connect(options)
       .then(conn => (this.conn = conn))
-      .then(::this.registerSchemas)
+      .then(::this.registerSchema)
       .then(::this.configureIndices);
   }
 
@@ -79,79 +79,48 @@ export default class Redink {
   }
 
   /**
-   * Registers Redink schemas. In other words, this completes the schema graph by hydrating inverse
-   * relationships where necessary. After finishing the graph, it ensures that all proper tables are
-   * created with each schema `type` as the table name.
+   * Registers the schema and creates a new model for each type.
    *
    * @private
-   * @method registerSchemas
-   * @param {Object} schemas - Redink schemas.
+   * @method registerSchema
+   * @param {Object} schema
    * @return {Promise<Object>}
    */
-  registerSchemas() {
-    const { conn, schemas, db, visitSchemas } = this;
-    const types = [];
+  registerSchema() {
+    const { conn, schema, db } = this;
+    const names = [];
 
-    const newSchemas = { ...schemas };
+    schema.types.forEach(type => {
+      const { name } = type;
 
-    /**
-     * First pass: visit each schema and invoke every `hasMany`, `hasOne`, and `belongsTo`
-     * relationship function. Along the way, add each schema type to `types`.
-     */
-    visitSchemas(newSchemas, {
-      enterSchema: ({ type }) => !types.includes(type) && types.push(type),
-      enterRelationship: ({ type, field, relationship }) => {
-        if (typeof relationship !== 'function') {
-          throw new TypeError(
-            `Tried registering the '${type}' schema's '${field}' relationship, but it wasn't a ` +
-            'function. Please use \'hasMany\', \'belongsTo\', or \'hasOne\' from ' +
-            '\'redink/schema\'.'
-          );
-        }
+      if (!names.includes(name)) names.push(name);
 
-        newSchemas[type].relationships[field] = relationship(field);
-      },
-    });
-
-    /**
-     * Second pass: hydrate every inverse relationship in the schema graph.
-     */
-    visitSchemas(newSchemas, {
-      enterRelationship: ({ relationship: { type } }) => hydrateInverse(newSchemas, type),
-    });
-
-    /**
-     * Third pass: add a schema key to every relationship and build up the indices registry.
-     */
-    visitSchemas(newSchemas, {
-      enterRelationship: ({ type, field, relationship }) => {
+      type.relationships.forEach(relationship => {
         const {
           relation,
-          type: relatedType,
+          name: relatedName,
           inverse: {
             relation: inverseRelation,
             field: inverseField,
           },
         } = relationship;
 
-        newSchemas[type].relationships[field].schema = newSchemas[relatedType];
-
         if (requiresIndex(relation, inverseRelation)) {
-          if (!this.indices[relatedType]) this.indices[relatedType] = {};
-          this.indices[relatedType][inverseField] = true;
+          if (!this.indices[relatedName]) this.indices[relatedName] = {};
+          this.indices[relatedName][inverseField] = true;
         }
-      },
+      });
     });
 
-    // ensure that the schemas will never be mutated
-    this.schemas = Object.freeze(newSchemas);
+    // ensure that the schema will never be mutated
+    this.schema = Object.freeze(schema);
 
     // create missing tables
     return r.db(db).tableList().run(conn)
 
       // compute difference between available tables and schema types and create them
       .then(tables => {
-        const missingTables = types.filter(type => !tables.includes(type));
+        const missingTables = names.filter(name => !tables.includes(name));
 
         return Promise.props(
           missingTables.reduce((prev, next) => ({
@@ -162,53 +131,21 @@ export default class Redink {
 
       // register the Models
       .then(() => {
-        types.forEach(type => {
-          this.models[type] = new Model(conn, type, this.schemas[type]);
+        names.forEach(name => {
+          this.models[name] = new Model(conn, this.schema.types[name]);
         });
       });
-  }
-
-  /**
-   * Walks through each schema, and calls `actions.enterSchema` upon entering each schema and calls
-   * `actions.enterRelationship` upon entering each relationship of that schema.
-   *
-   * @param {Object} schemas
-   * @param {Object} [actions={}]
-   * @param {Function} [actions.enterSchema]
-   * @param {Function} [actions.enterRelationship]
-   */
-  visitSchemas(schemas, actions = {}) {
-    const { keys } = Object;
-
-    keys(schemas).forEach(type => {
-      const schema = schemas[type];
-
-      if (typeof actions.enterSchema === 'function') {
-        actions.enterSchema({ type, schema });
-      }
-
-      keys(schema.relationships).forEach(field => {
-        if (typeof actions.enterRelationship === 'function') {
-          actions.enterRelationship({
-            relationship: schema.relationships[field],
-            type,
-            schema,
-            field,
-          });
-        }
-      });
-    });
   }
 
   /**
    * Determines which indices are missing on `table` and creates them.
    *
    * @private
-   * @method reconcileMissingTableIndices
+   * @method reconcileMissingIndices
    * @param {String} table - The table to reconcile missing indices on.
    * @return {Promise<Array>}
    */
-  reconcileMissingTableIndices(table) {
+  reconcileMissingIndices(table) {
     const { conn, indices, verbose } = this;
 
     if (!indices[table]) {
@@ -266,7 +203,7 @@ export default class Redink {
     return Promise.props(
       keys(indices).reduce((prev, next) => ({
         ...prev,
-        [next]: this.reconcileMissingTableIndices(next),
+        [next]: this.reconcileMissingIndices(next),
       }), {})
     ).then(reconciledTables => {
       if (verbose) {
@@ -296,26 +233,26 @@ export default class Redink {
    * @param {...String} types
    * @returns {(Model|ModelArray)}
    */
-  model(...types) {
-    if (types.length === 0) {
+  model(...names) {
+    if (names.length === 0) {
       throw new TypeError(
         'A defined type is required to access a Model instance.'
       );
     }
 
-    if (types.length === 1) {
-      const model = this.models[types[0]];
+    if (names.length === 1) {
+      const model = this.models[names[0]];
 
       if (!model) {
         throw new Error(
-          `Tried accessing a model with type '${types[0]}', but no such model was ever registered.`
+          `Tried accessing a model with type '${names[0]}', but no such model was ever registered.`
         );
       }
 
       return model;
     }
 
-    const models = types.reduce((prev, type) => {
+    const models = names.reduce((prev, type) => {
       const { model, alias } = destructureAlias(type);
 
       return {
