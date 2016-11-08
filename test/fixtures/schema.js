@@ -53,4 +53,28 @@ export default new Schema()
     },
   })
 
+  .defineType('teacher', {
+    attributes: {
+      name: true,
+    },
+    relationships: {
+      students: hasMany('student', 'teachers'),
+    },
+    meta: {
+      inflection: 'teachers',
+    },
+  })
+
+  .defineType('student', {
+    attributes: {
+      name: true,
+    },
+    relationships: {
+      teachers: hasMany('teacher', 'students'),
+    },
+    meta: {
+      inflection: 'students',
+    },
+  })
+
   .compile();

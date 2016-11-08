@@ -62,3 +62,28 @@ test('should create a blog that belongs to a user', async t => {
     t.fail(err.message);
   }
 });
+
+test('should sync hasMany -> hasMany', async t => {
+  try {
+    const teacher = await model('teacher').create({
+      name: 'Mr. Bob',
+      students: [],
+    });
+
+    const student = await model('student').create({
+      name: 'Sally',
+      teachers: [teacher.id],
+    });
+
+    const reload = await teacher.reload();
+
+    t.truthy(teacher instanceof Node);
+    t.truthy(student instanceof Node);
+    t.truthy(reload instanceof Node);
+
+    t.is(reload.retrieve('students')[0].id, student.id);
+    t.is(student.retrieve('teachers')[0].id, teacher.id);
+  } catch (err) {
+    t.fail(err.message);
+  }
+});
