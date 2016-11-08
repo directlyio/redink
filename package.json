@@ -1,6 +1,6 @@
 {
   "name": "redink",
-  "version": "3.0.0-alpha.2",
+  "version": "3.0.0-alpha.3",
   "description": "RethinkDB model layer",
   "main": "dist/index.js",
   "license": "MIT",
