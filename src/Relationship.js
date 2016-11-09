@@ -29,11 +29,15 @@ export default class Relationship {
         this.isHydrated = false;
       }
     } else {
-      if (data) {
-        this.data = new Node(conn, type, data);
-      } else {
-        this.data = null;
+      let node;
+
+      try {
+        node = new Node(conn, type, data);
+      } catch (err) {
+        node = null;
       }
+
+      this.data = node;
     }
   }
 

@@ -234,7 +234,8 @@ export default class Node {
     query = applyOptions(query, options);
 
     return query.run(conn)
-      .then(data => new Node(conn, type, data));
+      .then(data => new Node(conn, type, data))
+      .catch(() => null);
   }
 
   /**
@@ -287,7 +288,8 @@ export default class Node {
     query = mergeRelationships(query, type, options);
 
     return query.run(conn)
-      .then(newData => new Node(conn, type, newData));
+      .then(newData => new Node(conn, type, newData))
+      .catch(() => null);
   }
 
   /**

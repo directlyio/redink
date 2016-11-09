@@ -18,10 +18,20 @@ export default class Connection {
     this.pageInfo = data.pageInfo;
     this.totalCount = data.totalCount;
 
-    this.edges = data.edges.map(({ node, cursor }) => ({
-      node: new Node(conn, type, node),
-      cursor,
-    }));
+    this.edges = data.edges.map(({ node, cursor }) => {
+      let nodeOrNull;
+
+      try {
+        nodeOrNull = new Node(conn, type, node);
+      } catch (err) {
+        nodeOrNull = null;
+      }
+
+      return {
+        node: nodeOrNull,
+        cursor,
+      };
+    });
   }
 
   first() {

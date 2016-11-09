@@ -182,7 +182,8 @@ export default class Model {
     query = applyOptions(query, options);
 
     return query.run(conn)
-      .then(data => new Node(conn, relatedSchema, data));
+      .then(data => new Node(conn, relatedSchema, data))
+      .catch(() => null);
   }
 
   /**
@@ -208,7 +209,8 @@ export default class Model {
     query = applyOptions(query, options);
 
     return query.run(conn)
-      .then(data => new Node(conn, type, data));
+      .then(data => new Node(conn, type, data))
+      .catch(() => null);
   }
 
   /**
