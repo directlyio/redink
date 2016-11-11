@@ -4,7 +4,7 @@ import {
   getInverseIdsToUpdate,
 } from './utils';
 
-export default (inverseName, inverseField, originalOldIds, originalNewIds, idToPush) => (
+export default (name, inverseField, originalOldIds, originalNewIds, idToPush) => (
   r.do(
     getInverseIdsToUpdate(originalOldIds, originalNewIds), ids => (
       r.table(inverseName).getAll(r.args(ids.map(id => id('id')))).update(row => ({

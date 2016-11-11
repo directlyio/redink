@@ -11,7 +11,7 @@ export default (record, type, id) => {
 
   type.relationships.forEach(relationship => {
     const { field, name, relation, inverse } = relationship;
-    const { name: inverseName, field: inverseField, relation: inverseRelation } = inverse;
+    const { field: inverseField, relation: inverseRelation } = inverse;
     const data = record[field];
 
     let queryToPush;
@@ -31,8 +31,8 @@ export default (record, type, id) => {
 
       if (inverseRelation === 'hasOne') {
         queryToPush = relation === 'hasMany'
-          ? putIdToManyRecordsField(inverseName, data, inverseField, id)
-          : putIdToRecordField(inverseName, data, inverseField, id);
+          ? putIdToManyRecordsField(name, data, inverseField, id)
+          : putIdToRecordField(name, data, inverseField, id);
       }
 
       if (queryToPush) syncRelationshipsArray.push(queryToPush);
