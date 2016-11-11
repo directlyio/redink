@@ -17,7 +17,7 @@ export default (record, type, id) => {
     let queryToPush;
 
     if (hasOwnProperty(record, field)) {
-      if (inverseRelation === 'hasMany') {
+      if (relation === 'hasMany' && inverseRelation === 'hasMany') {
         const dataCoercedToArray = Array.isArray(data) ? data : [data];
 
         queryToPush = pushIdToInverseField(
