@@ -112,6 +112,36 @@ export default class Model {
   }
 
   /**
+   * Creates a connection by finding records with ids in `ids`.
+   *
+   * ```
+   * model('user').findByIds(['1', '2', '3']).then(users => {
+   *   // Connection
+   * });
+   * ```
+   *
+   * @async
+   * @method findByIds
+   * @param {String} index - The index name.
+   * @param {Array<String>} ids
+   * @param {Object} [options={}]
+   * @return {Promise<Connection>}
+   *
+   * @todo Add test.
+   */
+  findByIds(index, ids, options = {}) {
+    const { conn, type } = this;
+
+    const connection = createConnection(
+      type,
+      r.table(type.name).getAll(r.args(ids)),
+      options
+    );
+
+    return connection.run(conn).then(data => new Connection(conn, type, data));
+  }
+
+  /**
    * Finds a single node from `index` that matches `value` and that matches the criteria in
    * `options`.
    *
