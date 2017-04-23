@@ -129,7 +129,7 @@ export default class Model {
    *
    * @todo Add test.
    */
-  findByIds(index, ids, options = {}) {
+  findByIds(ids, options = {}) {
     const { conn, type } = this;
 
     const connection = createConnection(
