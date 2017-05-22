@@ -362,6 +362,66 @@ export default class Node {
   }
 
   /**
+   * Updates the node's `relationships.`
+   *
+   * @async
+   * @param {Object} fields
+   * @param {Object} options
+   * @return {Object}
+   */
+  updateRelationships(fields, options = {}) {
+    const { splice, push, put, remove, relationships } = this;
+    const reloadWithOptions = () => ::this.reload(options);
+    const mutations = [];
+
+    Object.keys(fields).forEach(field => {
+      const relationship = relationships.ofType(field);
+
+      if (relationship) {
+        const { relation } = relationship;
+
+        console.log('Relationship', relation);
+
+        switch (relation) {
+          case 'hasOne': {
+            console.log('Has one');
+            if (fields[field]) mutations.push(put(field, fields[field], options));
+            else mutations.push(remove(field, options));
+            break;
+          }
+
+          case 'hasMany': {
+            console.log('Has many');
+            const { data } = relationship;
+            const ids = data.edges.map(({ node }) => node.id);
+
+            const idsToPush = ids.filter(item => !fields[field].includes(item));
+            const idsToSplice = fields[field].filter(item => !ids.includes(item));
+
+            console.log('ids push:', idsToPush);
+            console.log('ids splice:', idsToSplice);
+
+            mutations.push(splice(field, idsToSplice, options));
+            mutations.push(push(field, idsToPush, options));
+          }
+
+          // eslint-disable-next-line
+          case 'belongsTo':
+          default: {
+            throw new TypeError(
+              'Tried calling \'updateRelationships\' on a belongsTo relationship.'
+            );
+          }
+        }
+      }
+    });
+
+    console.log('mutations:', mutations);
+
+    return Promise.all(mutations).then(reloadWithOptions);
+  }
+
+  /**
    * Removes the 'idToRemove' from this resource's 'hasOne' or 'belongsTo' relationship by setting
    * the resource pointer's _archived to true.
    *
