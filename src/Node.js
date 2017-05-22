@@ -370,39 +370,37 @@ export default class Node {
    * @return {Object}
    */
   updateRelationships(fields, options = {}) {
-    const { splice, push, put, remove, relationships } = this;
+    const { relationships } = this;
+    const splice = ::this.splice;
+    const put = ::this.put;
+    const remove = ::this.remove;
+    const push = ::this.push;
     const reloadWithOptions = () => ::this.reload(options);
     const mutations = [];
 
     Object.keys(fields).forEach(field => {
-      const relationship = relationships.ofType(field);
+      const relationship = relationships[field];
 
       if (relationship) {
         const { relation } = relationship;
 
-        console.log('Relationship', relation);
-
         switch (relation) {
           case 'hasOne': {
-            console.log('Has one');
-            if (fields[field]) mutations.push(put(field, fields[field], options));
+            if (fields[field]) mutations.push(() => put(field, fields[field], options));
             else mutations.push(remove(field, options));
             break;
           }
 
           case 'hasMany': {
-            console.log('Has many');
             const { data } = relationship;
-            const ids = data.edges.map(({ node }) => node.id);
+            const ids = data.map(({ id }) => id);
 
-            const idsToPush = ids.filter(item => !fields[field].includes(item));
-            const idsToSplice = fields[field].filter(item => !ids.includes(item));
-
-            console.log('ids push:', idsToPush);
-            console.log('ids splice:', idsToSplice);
+            const idsToPush = fields[field].filter(item => !ids.includes(item));
+            const idsToSplice = ids.filter(item => !fields[field].includes(item));
 
             mutations.push(splice(field, idsToSplice, options));
             mutations.push(push(field, idsToPush, options));
+            break;
           }
 
           // eslint-disable-next-line
@@ -415,8 +413,6 @@ export default class Node {
         }
       }
     });
-
-    console.log('mutations:', mutations);
 
     return Promise.all(mutations).then(reloadWithOptions);
   }
@@ -855,7 +851,7 @@ export default class Node {
    */
   push(relationship, data, options = {}) {
     const relationshipObject = this.relationship(relationship);
-    const { relation, inverse, field, records } = relationshipObject;
+    const { relation, inverse, field, data: records } = relationshipObject;
     const { type, id, conn } = this;
     const reloadWithOptions = () => this.reload(options);
 

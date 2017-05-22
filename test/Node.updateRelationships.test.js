@@ -12,15 +12,15 @@ test('should update a user\'s relationships', async t => {
         userNode.updateRelationships({
           name: 'CJ',
           email: 'brewercalvinj@gmail.com',
-          friends: ['2', '3'],
+          friends: ['3'],
         })
       ));
 
-    console.log(user.relationships);
-
     t.truthy(user instanceof Node);
-    t.is(user.attribute('name'), 'CJ');
-    t.is(user.attribute('email'), undefined);
+    t.is(user.attribute('name'), 'Bob');
+    t.is(user.relationship('friends').data[1].id, '3');
+    t.is(user.relationship('friends').data[0]._related, false);
+    t.is(user.retrieve('friends').length, 2);
   } catch (err) {
     t.fail(err.message);
   }
