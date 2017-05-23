@@ -395,11 +395,10 @@ export default class Node {
             const { data } = relationship;
             const ids = data.map(({ id }) => id);
 
-            const idsToPush = fields[field].filter(item => !ids.includes(item));
             const idsToSplice = ids.filter(item => !fields[field].includes(item));
 
             mutations.push(splice(field, idsToSplice, options));
-            mutations.push(push(field, idsToPush, options));
+            mutations.push(push(field, fields[field], options));
             break;
           }
 
