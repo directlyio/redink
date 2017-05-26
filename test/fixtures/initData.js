@@ -9,6 +9,10 @@ export default {
         id: '2',
         _archived: false,
         _related: true,
+      }, {
+        id: '3',
+        _archived: false,
+        _related: false,
       }],
       company: {
         id: '1',
@@ -32,7 +36,11 @@ export default {
     }, {
       id: '3',
       name: 'Joe',
-      friends: [],
+      friends: [{
+        id: '1',
+        _archived: false,
+        _related: false,
+      }],
       _meta: {
         _archived: false,
       },
